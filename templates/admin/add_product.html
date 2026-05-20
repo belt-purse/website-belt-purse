@@ -1,6 +1,8 @@
 {% extends "admin/base_admin.html" %}
 
 {% block content %}
+{% set errors = errors or {} %}
+{% set form_data = form_data or {} %}
 
 <!-- Cropper CSS -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css"/>
@@ -9,14 +11,22 @@
 
     <div class="page-header">
         <div>
-            <h2>Add Product</h2>
-            <p>Create premium product listing with proper details.</p>
+            <h2>Add {{ singular_label or 'Product' }}</h2>
+            <p>Create premium {{ (singular_label or 'product')|lower }} listing with proper details.</p>
         </div>
     </div>
 
     <div class="glass premium-form-card">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="form-alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
 
         <form method="POST" enctype="multipart/form-data" id="productForm">
+            <input type="hidden" name="product_type" value="{{ product_type or 'belt' }}">
 
             <!-- BASIC INFO -->
             <div class="form-section">
@@ -24,7 +34,10 @@
 
                 <div class="form-group">
                     <label>Product Name</label>
-                    <input type="text" name="name" placeholder="Enter product name" required>
+                    <input type="text" name="name" value="{{ form_data.get('name', '') }}" placeholder="Enter product name" class="{% if errors.get('name') %}field-error{% endif %}" required>
+                    {% if errors.get('name') %}
+                    <small class="field-error-message">{{ errors.get('name') }}</small>
+                    {% endif %}
                 </div>
 
                 <div class="grid-2">
@@ -32,13 +45,13 @@
 
                     <div class="form-group">
                         <label>Guarantee</label>
-                        <input type="text" name="guarantee" placeholder="e.g. 1 Year Warranty">
+                        <input type="text" name="guarantee" value="{{ form_data.get('guarantee', '') }}" placeholder="e.g. 1 Year Warranty">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Material</label>
-                    <input type="text" name="material" placeholder="e.g. Genuine Leather">
+                    <input type="text" name="material" value="{{ form_data.get('material', '') }}" placeholder="e.g. Genuine Leather">
                 </div>
             </div>
 
@@ -49,17 +62,17 @@
                 <div class="grid-3">
                     <div class="form-group">
                         <label>Original Price (MRP)</label>
-                        <input type="number" name="original_price" placeholder="Enter MRP" required>
+                        <input type="number" name="original_price" value="{{ form_data.get('original_price', '') }}" placeholder="Enter MRP" required>
                     </div>
 
                     <div class="form-group">
                         <label>Discount %</label>
-                        <input type="number" name="discount_percent" placeholder="Enter discount" value="0">
+                        <input type="number" name="discount_percent" placeholder="Enter discount" value="{{ form_data.get('discount_percent', '0') }}">
                     </div>
 
                     <div class="form-group">
                         <label>Rating</label>
-                        <input type="number" step="0.1" min="0" max="5" name="rating" placeholder="Optional">
+                        <input type="number" step="0.1" min="0" max="5" name="rating" value="{{ form_data.get('rating', '') }}" placeholder="Optional">
                     </div>
                 </div>
 
@@ -75,11 +88,12 @@
 
                 <div class="form-group">
                     <label>Product Description</label>
-                    <textarea name="description" rows="5" placeholder="Write detailed product description"></textarea>
+                    <textarea name="description" rows="5" placeholder="Write detailed product description">{{ form_data.get('description', '') }}</textarea>
                 </div>
             </div>
 
             <!-- SIZE -->
+            {% if requires_size %}
             <div class="form-section">
                 <h3>Size Details</h3>
 
@@ -87,21 +101,29 @@
                     <div class="form-group">
                         <label>Size Unit</label>
                         <select name="size_unit">
-                            <option value="inch">Inch</option>
-                            <option value="cm">CM</option>
+                            {% set selected_unit = form_data.get('size_unit', 'inch') %}
+                            <option value="inch" {% if selected_unit == 'inch' %}selected{% endif %}>Inch</option>
+                            <option value="cm" {% if selected_unit == 'cm' %}selected{% endif %}>CM</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label>Available Sizes</label>
-                        <input type="text" name="sizes" placeholder="e.g. 30,32,34,36">
+                        <input type="text" name="sizes" value="{{ form_data.get('sizes', '') }}" placeholder="e.g. 30,32,34,36" class="{% if errors.get('sizes') %}field-error{% endif %}">
+                        {% if errors.get('sizes') %}
+                        <small class="field-error-message">{{ errors.get('sizes') }}</small>
+                        {% endif %}
                     </div>
                 </div>
             </div>
+            {% endif %}
             <!-- COLORS -->
 <!-- COLORS + IMAGES -->
 <div class="form-section">
-    <h3>Product Colors & Images</h3>
+    <div class="section-title-row">
+        <h3>Product Colors & Images</h3>
+        <a href="/admin/colors" class="manage-colors-link">Manage Colors</a>
+    </div>
 
     <p class="hint-text">
         👉 Step 1: Select color  
@@ -120,7 +142,7 @@
                {% if color.id in selected_color_ids %}checked{% endif %}
                onchange="toggleUpload(this, {{ color.id }})">
 
-        <span class="color-circle" style="background: {{ color.code }}"></span>
+        <span class="color-circle" style="background: {{ color.hex_code or color.code }}"></span>
         <strong class="color-name">{{ color.name }}</strong>
     </label>
 
@@ -203,12 +225,12 @@
 
                 <div class="form-group">
                     <label>Tags</label>
-                    <input type="text" name="tags" placeholder="e.g. leather, premium, stylish">
+                    <input type="text" name="tags" value="{{ form_data.get('tags', '') }}" placeholder="e.g. leather, premium, stylish">
                 </div>
             </div>
 
             <button class="btn premium-btn" type="submit">
-                Add Product
+                Add {{ singular_label or 'Product' }}
             </button>
 
         </form>
@@ -797,6 +819,50 @@
         border-radius: 8px !important;
         font-size: 12px !important;
     }
+}
+.section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.section-title-row h3 {
+    margin-bottom: 0;
+}
+
+.manage-colors-link {
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    color: #0A5C56;
+    background: #ffffff;
+    font-size: 13px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.form-alert {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 14px;
+}
+
+.field-error {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.field-error-message {
+    display: block;
+    margin-top: 6px;
+    color: #dc2626;
+    font-size: 12px;
+    line-height: 1.35;
 }
 
 @media(max-width: 380px) {

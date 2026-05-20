@@ -117,31 +117,122 @@ def describe_database_url(url):
     port = f":{url.port}" if url.port else ""
     return f"type={url.drivername} host={host}{port} database={database}"
 
-def ensure_column_exists(table_name, column_name, column_sql):
+def table_exists(inspector, table_name):
+    return table_name in inspector.get_table_names()
+
+
+def ensure_column_exists(table_name, column_name, column_sql, fallback_column_sql=None):
     inspector = inspect(db.engine)
 
-    if table_name not in inspector.get_table_names():
+    if not table_exists(inspector, table_name):
+        print(f"SAFE DB MIGRATION: skipped {table_name}.{column_name}; table does not exist")
+        return
+
+    dialect_name = db.engine.dialect.name
+    fallback_column_sql = fallback_column_sql or column_sql
+
+    if dialect_name == "postgresql":
+        with db.engine.begin() as conn:
+            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column_sql}"))
+        print(f"SAFE DB MIGRATION: ensured {table_name}.{column_name}")
         return
 
     existing_columns = [col["name"] for col in inspector.get_columns(table_name)]
+    if column_name in existing_columns:
+        print(f"SAFE DB MIGRATION: {table_name}.{column_name} already exists")
+        return
 
-    if column_name not in existing_columns:
-        with db.engine.begin() as conn:
-            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_sql}"))
+    with db.engine.begin() as conn:
+        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {fallback_column_sql}"))
+    print(f"SAFE DB MIGRATION: added {table_name}.{column_name}")
 
 
 def ensure_live_db_columns():
+    print("SAFE DB MIGRATION: checking required columns")
     # ✅ Warranty page fix
     ensure_column_exists("warranty", "order_id", "order_id INTEGER")
     ensure_column_exists("warranty", "product_name", "product_name VARCHAR(255)")
     ensure_column_exists("warranty", "purchase_date", "purchase_date DATE")
+    ensure_column_exists("warranty", "message", "message TEXT")
 
     # ✅ Product archive fix
     ensure_column_exists("products", "is_archived", "is_archived BOOLEAN DEFAULT FALSE")
+    ensure_column_exists("products", "product_type", "product_type VARCHAR(50) DEFAULT 'belt'")
+    ensure_column_exists("products", "requires_size", "requires_size BOOLEAN DEFAULT TRUE")
+    ensure_column_exists("colors", "hex_code", "hex_code VARCHAR(20)")
+    ensure_column_exists(
+        "tickets",
+        "updated_at",
+        "updated_at TIMESTAMP WITHOUT TIME ZONE",
+        "updated_at DATETIME"
+    )
+
+    inspector = inspect(db.engine)
+
+    if table_exists(inspector, "products"):
+        with db.engine.begin() as conn:
+            result = conn.execute(text("""
+                UPDATE products
+                SET product_type = 'belt'
+                WHERE product_type IS NULL OR product_type = ''
+            """))
+            print(f"SAFE DB MIGRATION: backfilled products.product_type rows={result.rowcount}")
+            result = conn.execute(text("""
+                UPDATE products
+                SET requires_size = TRUE
+                WHERE requires_size IS NULL
+            """))
+            print(f"SAFE DB MIGRATION: backfilled products.requires_size rows={result.rowcount}")
+    else:
+        print("SAFE DB MIGRATION: skipped products backfill; table does not exist")
+
+    if table_exists(inspector, "colors"):
+        with db.engine.begin() as conn:
+            result = conn.execute(text("""
+                UPDATE colors
+                SET hex_code = code
+                WHERE (hex_code IS NULL OR hex_code = '')
+                  AND code IS NOT NULL
+                  AND code != ''
+            """))
+            print(f"SAFE DB MIGRATION: backfilled colors.hex_code rows={result.rowcount}")
+            result = conn.execute(text("""
+                UPDATE colors
+                SET code = hex_code
+                WHERE (code IS NULL OR code = '')
+                  AND hex_code IS NOT NULL
+                  AND hex_code != ''
+            """))
+            print(f"SAFE DB MIGRATION: backfilled colors.code rows={result.rowcount}")
+    else:
+        print("SAFE DB MIGRATION: skipped colors backfill; table does not exist")
+
+    if table_exists(inspector, "tickets"):
+        ticket_columns = [col["name"] for col in inspect(db.engine).get_columns("tickets")]
+        if "updated_at" in ticket_columns:
+            with db.engine.begin() as conn:
+                if "created_at" in ticket_columns:
+                    result = conn.execute(text("""
+                        UPDATE tickets
+                        SET updated_at = COALESCE(created_at, CURRENT_TIMESTAMP)
+                        WHERE updated_at IS NULL
+                    """))
+                else:
+                    result = conn.execute(text("""
+                        UPDATE tickets
+                        SET updated_at = CURRENT_TIMESTAMP
+                        WHERE updated_at IS NULL
+                    """))
+                print(f"SAFE DB MIGRATION: backfilled tickets.updated_at rows={result.rowcount}")
+    else:
+        print("SAFE DB MIGRATION: skipped tickets backfill; table does not exist")
+
+    print("SAFE DB MIGRATION: completed")
 
 with app.app_context():
     print("DB IN USE:", describe_database_url(db.engine.url))
-    PasswordResetToken.__table__.create(db.engine, checkfirst=True)
+    print("SAFE DB MIGRATION: creating missing tables with db.create_all(checkfirst=True)")
+    db.create_all()
     ensure_live_db_columns()
 
 
@@ -367,7 +458,12 @@ def add_cart_item(user, product_id, color_id=None, size_id=None, quantity=1):
 
 
 def product_requires_size(product_id):
-    return ProductSize.query.filter_by(product_id=product_id).first() is not None
+    product = Product.query.get(product_id)
+    if not product:
+        return False
+    if product.requires_size is not None:
+        return bool(product.requires_size)
+    return (product.product_type or "belt") == "belt"
 
 
 def is_valid_product_size(product_id, size_id):
@@ -1162,11 +1258,125 @@ def admin_logout():
 @app.route("/admin/products")
 @admin_required
 def admin_products():
+    return render_template("admin/product_categories.html")
+
+
+def normalize_product_type(product_type=None):
+    value = (product_type or request.args.get("type") or request.form.get("product_type") or "belt").strip().lower()
+    if value in ("wallet", "wallets", "purse", "purses"):
+        return "wallet"
+    return "belt"
+
+
+def product_type_settings(product_type):
+    product_type = normalize_product_type(product_type)
+    if product_type == "wallet":
+        return {
+            "product_type": "wallet",
+            "requires_size": False,
+            "plural_label": "Wallets / Purses",
+            "singular_label": "Wallet / Purse",
+            "list_url": "/admin/products/wallets",
+            "add_url": "/admin/products/wallets/add"
+        }
+    return {
+        "product_type": "belt",
+        "requires_size": True,
+        "plural_label": "Belts",
+        "singular_label": "Belt",
+        "list_url": "/admin/products/belts",
+        "add_url": "/admin/products/belts/add"
+    }
+
+
+def validate_product_name(name):
+    if not name:
+        return None, "Product name cannot be empty."
+    if name != name.strip():
+        return None, "Product name cannot start or end with spaces."
+    if re.search(r"\s{2,}", name):
+        return None, "Product name cannot contain multiple spaces between words."
+    return name, None
+
+
+def validate_belt_sizes(sizes_text):
+    sizes_text = sizes_text or ""
+    if not sizes_text:
+        return None, "Size is required for belt products."
+    if re.search(r"\s", sizes_text):
+        return None, "Enter sizes without spaces. Example: 26,28,30"
+    if not re.fullmatch(r"\d+(,\d+)*", sizes_text):
+        return None, "Enter sizes without spaces. Example: 26,28,30"
+    return sizes_text, None
+
+
+def product_form_data():
+    return request.form.to_dict(flat=True)
+
+
+def selected_color_ids_from_request():
+    selected = []
+    for color_id in request.form.getlist("colors"):
+        try:
+            selected.append(int(color_id))
+        except (TypeError, ValueError):
+            continue
+    return selected
+
+
+def normalize_hex_code(hex_code):
+    if not hex_code:
+        return None
+    return hex_code.strip().lower()
+
+
+def validate_color_form(name, hex_code, color_id=None):
+    if not name:
+        return None, None, "Color name is required."
+    if name != name.strip():
+        return None, None, "Color name cannot start or end with spaces."
+    if re.search(r"\s{2,}", name):
+        return None, None, "Color name cannot contain multiple spaces between words."
+
+    clean_name = name.strip()
+    clean_hex = normalize_hex_code(hex_code)
+    if not clean_hex:
+        return None, None, "Hex code is required."
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", clean_hex):
+        return None, None, "Hex code must be a valid format like #000000 or #ffffff."
+
+    duplicate_query = Color.query.filter(db.func.lower(Color.name) == clean_name.lower())
+    if color_id:
+        duplicate_query = duplicate_query.filter(Color.id != color_id)
+    if duplicate_query.first():
+        return None, None, "A color with this name already exists."
+
+    return clean_name, clean_hex, None
+
+
+def color_usage_count(color_id):
+    return db.session.execute(text("""
+        SELECT
+            (SELECT COUNT(*) FROM product_colors WHERE color_id = :cid) +
+            (SELECT COUNT(*) FROM product_images WHERE color_id = :cid) +
+            (SELECT COUNT(*) FROM product_videos WHERE color_id = :cid) +
+            (SELECT COUNT(*) FROM cart WHERE color_id = :cid) +
+            (SELECT COUNT(*) FROM wishlist WHERE color_id = :cid) +
+            (SELECT COUNT(*) FROM order_items WHERE color_id = :cid)
+    """), {"cid": color_id}).scalar() or 0
+
+
+def redirect_to_product_list(product):
+    return redirect(product_type_settings(getattr(product, "product_type", "belt"))["list_url"])
+
+
+def admin_products_by_type(product_type):
+    settings = product_type_settings(product_type)
     products = Product.query.options(
         db.joinedload(Product.images),
         db.joinedload(Product.videos), 
         db.joinedload(Product.product_colors).joinedload(ProductColor.color)
-    ).order_by(Product.id.desc()).all()
+    ).filter(Product.product_type == settings["product_type"]).order_by(Product.id.desc()).all()
 
     unique_products = []
     seen_product_ids = set()
@@ -1176,13 +1386,111 @@ def admin_products():
         unique_products.append(product)
         seen_product_ids.add(product.id)
 
-    return render_template("admin/products.html", products=unique_products)
+    return render_template("admin/products.html", products=unique_products, **settings)
+
+
+@app.route("/admin/products/belts")
+@admin_required
+def admin_belt_products():
+    return admin_products_by_type("belt")
+
+
+@app.route("/admin/products/wallets")
+@admin_required
+def admin_wallet_products():
+    return admin_products_by_type("wallet")
+
+
+@app.route("/admin/colors", methods=["GET", "POST"])
+@admin_required
+def admin_colors():
+    if request.method == "POST":
+        name, hex_code, error = validate_color_form(
+            request.form.get("name"),
+            request.form.get("hex_code") or request.form.get("code")
+        )
+        if error:
+            flash(error, "error")
+            return redirect("/admin/colors")
+
+        color = Color(name=name, code=hex_code, hex_code=hex_code)
+        db.session.add(color)
+        db.session.commit()
+        flash("Color added successfully.", "success")
+        return redirect("/admin/colors")
+
+    colors = Color.query.order_by(Color.name.asc(), Color.id.asc()).all()
+    return render_template("admin/colors.html", colors=colors, usage_count=color_usage_count)
+
+
+@app.route("/admin/colors/edit/<int:id>", methods=["POST"])
+@admin_required
+def edit_color(id):
+    color = Color.query.get_or_404(id)
+    name, hex_code, error = validate_color_form(
+        request.form.get("name"),
+        request.form.get("hex_code") or request.form.get("code"),
+        color_id=id
+    )
+    if error:
+        flash(error, "error")
+        return redirect("/admin/colors")
+
+    color.name = name
+    color.code = hex_code
+    color.hex_code = hex_code
+    db.session.commit()
+    flash("Color updated successfully.", "success")
+    return redirect("/admin/colors")
+
+
+@app.route("/admin/colors/delete/<int:id>")
+@admin_required
+def delete_color(id):
+    color = Color.query.get_or_404(id)
+    if color_usage_count(id) > 0:
+        flash("This color is used in products or orders and cannot be deleted.", "error")
+        return redirect("/admin/colors")
+
+    db.session.delete(color)
+    db.session.commit()
+    flash("Color deleted successfully.", "success")
+    return redirect("/admin/colors")
+
+
 @app.route("/admin/products/add", methods=["GET", "POST"])
+@app.route("/admin/products/belts/add", methods=["GET", "POST"])
+@app.route("/admin/products/wallets/add", methods=["GET", "POST"])
 @admin_required
 def add_product():
+    product_type = normalize_product_type("wallet" if request.path.endswith("/wallets/add") else None)
+    settings = product_type_settings(product_type)
 
     if request.method == "POST":
-        name = request.form.get("name")
+        errors = {}
+        form_data = product_form_data()
+        selected_color_ids = selected_color_ids_from_request()
+        name, name_error = validate_product_name(request.form.get("name"))
+        if name_error:
+            errors["name"] = name_error
+        sizes = request.form.get("sizes") if settings["requires_size"] else None
+        if settings["requires_size"]:
+            sizes, sizes_error = validate_belt_sizes(sizes)
+            if sizes_error:
+                errors["sizes"] = sizes_error
+
+        if errors:
+            colors = Color.query.order_by(Color.name.asc(), Color.id.asc()).all()
+            return render_template(
+                "admin/add_product.html",
+                colors=colors,
+                product=None,
+                selected_color_ids=selected_color_ids,
+                errors=errors,
+                form_data=form_data,
+                **settings
+            )
+
         guarantee = request.form.get("guarantee")
         material = request.form.get("material")
         description = request.form.get("description")
@@ -1190,12 +1498,14 @@ def add_product():
         original_price = float(request.form.get("original_price", 0))
         discount_percent = float(request.form.get("discount_percent", 0))
         rating = request.form.get("rating")
-        size_unit = request.form.get("size_unit", "inch")
+        size_unit = request.form.get("size_unit", "inch") if settings["requires_size"] else None
 
         final_price = original_price - (original_price * discount_percent / 100)
 
         product = Product(
             name=name,
+            product_type=settings["product_type"],
+            requires_size=settings["requires_size"],
             price=int(final_price),
             original_price=original_price,
             discount_percent=discount_percent,
@@ -1213,8 +1523,7 @@ def add_product():
         # =========================
         # ✅ SIZES
         # =========================
-        sizes = request.form.get("sizes")
-        if sizes:
+        if settings["requires_size"] and sizes:
             for s in sizes.split(","):
                 s = s.strip()
                 if s:
@@ -1321,32 +1630,66 @@ def add_product():
 
         db.session.commit()
         print("Product saved ID:", product.id)
-        return redirect("/admin/products")
+        return redirect(settings["list_url"])
 
     # GET
-    colors = Color.query.all()
+    colors = Color.query.order_by(Color.name.asc(), Color.id.asc()).all()
     return render_template(
         "admin/add_product.html",
         colors=colors,
         product=None,
-        selected_color_ids=[]
+        selected_color_ids=[],
+        errors={},
+        form_data={},
+        **settings
     )
 @app.route("/admin/products/edit/<int:id>", methods=["GET", "POST"])
 @admin_required
 def edit_product(id):
 
     product = Product.query.get_or_404(id)
+    if not product.product_type:
+        product.product_type = "belt"
+    if product.requires_size is None:
+        product.requires_size = product.product_type == "belt"
+    settings = product_type_settings(product.product_type)
 
     if request.method == "POST":
+        errors = {}
+        form_data = product_form_data()
+        selected_color_ids = selected_color_ids_from_request()
 
         # =========================
         # BASIC DETAILS
         # =========================
-        product.name = request.form.get("name")
+        name, name_error = validate_product_name(request.form.get("name"))
+        if name_error:
+            errors["name"] = name_error
+        sizes_text = request.form.get("sizes") if settings["requires_size"] else None
+        if settings["requires_size"]:
+            sizes_text, sizes_error = validate_belt_sizes(sizes_text)
+            if sizes_error:
+                errors["sizes"] = sizes_error
+
+        if errors:
+            colors = Color.query.order_by(Color.name.asc(), Color.id.asc()).all()
+            return render_template(
+                "admin/edit_product.html",
+                product=product,
+                colors=colors,
+                selected_color_ids=selected_color_ids,
+                errors=errors,
+                form_data=form_data,
+                **settings
+            )
+
+        product.name = name
+        product.product_type = settings["product_type"]
+        product.requires_size = settings["requires_size"]
         product.guarantee = request.form.get("guarantee")
         product.material = request.form.get("material")
         product.description = request.form.get("description")
-        product.size_unit = request.form.get("size_unit", "inch")
+        product.size_unit = request.form.get("size_unit", "inch") if settings["requires_size"] else None
 
         # =========================
         # PRICE
@@ -1489,23 +1832,26 @@ def edit_product(id):
         # =========================
         # SIZES
         # =========================
-        sizes = ProductSize.query.filter_by(product_id=id).all()
+        if settings["requires_size"]:
+            existing_sizes = ProductSize.query.filter_by(product_id=id).all()
+            old_labels = ",".join([s.size_label for s in existing_sizes])
+            if sizes_text != old_labels:
+                Cart.query.filter_by(product_id=id).delete()
 
-        Cart.query.filter_by(product_id=id).delete()
+            ProductSize.query.filter_by(product_id=id).delete()
 
-
-        ProductSize.query.filter_by(product_id=id).delete()
-        sizes = request.form.get("sizes")
-
-        if sizes:
-            for s in sizes.split(","):
-                s = s.strip()
-                if s:
-                    db.session.add(ProductSize(
-                        product_id=id,
-                        size_label=s,
-                        size_value=float(s)
-                    ))
+            if sizes_text:
+                for s in sizes_text.split(","):
+                    s = s.strip()
+                    if s:
+                        db.session.add(ProductSize(
+                            product_id=id,
+                            size_label=s,
+                            size_value=float(s)
+                        ))
+        else:
+            Cart.query.filter_by(product_id=id).update({"size_id": None})
+            ProductSize.query.filter_by(product_id=id).delete()
 
         # =========================
         # TAGS
@@ -1528,15 +1874,18 @@ def edit_product(id):
         # =========================
         db.session.commit()
 
-        return redirect("/admin/products")
+        return redirect(settings["list_url"])
 
     # GET
-    colors = Color.query.all()
+    colors = Color.query.order_by(Color.name.asc(), Color.id.asc()).all()
 
     return render_template(
         "admin/edit_product.html",
         product=product,
-        colors=colors
+        colors=colors,
+        errors={},
+        form_data={},
+        **settings
     )
 
 @app.route("/admin/products/delete/<int:id>")
@@ -1575,7 +1924,7 @@ def delete_product(id):
                 "message": "Product permanently deleted successfully"
             })
 
-        return redirect("/admin/products")
+        return redirect_to_product_list(product)
 
     except Exception as e:
         db.session.rollback()
@@ -1612,7 +1961,7 @@ def archive_product(id):
         })
 
     flash("Product archived successfully", "success")
-    return redirect("/admin/products")
+    return redirect_to_product_list(product)
 
 
 @app.route("/admin/products/unarchive/<int:id>")
@@ -1632,7 +1981,7 @@ def unarchive_product(id):
         })
 
     flash("Product unarchived successfully", "success")
-    return redirect("/admin/products")
+    return redirect_to_product_list(product)
 
 @app.route("/admin/video/delete/<int:id>")
 @admin_required
@@ -2370,6 +2719,8 @@ def products():
                 "original_price": p.original_price,
                 "discount_percent": p.discount_percent or 0,
                 "rating": p.rating or 0,
+                "product_type": p.product_type or "belt",
+                "requires_size": bool(p.requires_size if p.requires_size is not None else True),
 
                 "images": fallback_images if fallback_images else [images[0].image_url],
 
@@ -2402,20 +2753,24 @@ def products():
                 "original_price": p.original_price,
                 "discount_percent": p.discount_percent or 0,
                 "rating": p.rating or 0,
+                "product_type": p.product_type or "belt",
+                "requires_size": bool(p.requires_size if p.requires_size is not None else True),
 
                 "images": imgs,
 
                 "color_variant": {
                     "id": pc.color.id,
                     "name": pc.color.name,
-                    "code": pc.color.code
+                    "code": pc.color.hex_code or pc.color.code,
+                    "hex_code": pc.color.hex_code or pc.color.code
                 },
 
                 "colors": [
                     {
                         "id": pc.color.id,
                         "name": pc.color.name,
-                        "code": pc.color.code
+                        "code": pc.color.hex_code or pc.color.code,
+                        "hex_code": pc.color.hex_code or pc.color.code
                     }
                 ],
                 "sizes": product_sizes
@@ -2856,7 +3211,7 @@ def cart_page():
             c.size_id,
             COALESCE(ps.size_label, '') AS size_label,
             COALESCE(co.name, '') AS color_name,
-            COALESCE(co.code, '') AS color_code,
+            COALESCE(co.hex_code, co.code, '') AS color_code,
             COALESCE(
                 (SELECT pi.image_url FROM product_images pi
                  WHERE pi.product_id = p.id AND c.color_id IS NOT NULL
@@ -3055,7 +3410,7 @@ def get_wishlist():
     user = User.query.filter_by(email=session['email']).first()
 
     items = db.session.execute(text("""
-        SELECT p.*, w.color_id, co.name AS color_name, co.code AS color_code,
+        SELECT p.*, w.color_id, co.name AS color_name, COALESCE(co.hex_code, co.code) AS color_code,
                COALESCE(
                    (SELECT pi.image_url FROM product_images pi
                     WHERE pi.product_id = p.id AND w.color_id IS NOT NULL
@@ -3127,7 +3482,7 @@ def wishlist_page():
         SELECT p.*,
                w.color_id,
                co.name AS color_name,
-               co.code AS color_code,
+               COALESCE(co.hex_code, co.code) AS color_code,
                COALESCE(
                    (SELECT pi.image_url FROM product_images pi
                     WHERE pi.product_id = p.id AND w.color_id IS NOT NULL

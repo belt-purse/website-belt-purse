@@ -5,11 +5,17 @@
 <div class="products-page">
     <div class="top-bar">
         <div>
-            <h2>Products</h2>
-            <p>Manage all your store products in one place.</p>
+            <h2>{{ plural_label or 'Products' }}</h2>
+            <p>
+                {% if product_type == 'wallet' %}
+                    Manage wallets and purses with color variants, images, pricing and details.
+                {% else %}
+                    Manage all belt products with sizes, colors, images, pricing and stock.
+                {% endif %}
+            </p>
         </div>
 
-        <a href="/admin/products/add" class="add-btn">+ Add Product</a>
+        <a href="{{ add_url or '/admin/products/add' }}" class="add-btn">+ Add {{ singular_label or 'Product' }}</a>
     </div>
 
     <div class="product-grid">
@@ -40,7 +46,7 @@
                         {% if color_images|length > 0 %}
                         <div class="color-block">
                             <div class="color-header">
-                                <span class="color-dot" style="background: {{ pc.color.code }}"></span>
+                                <span class="color-dot" style="background: {{ pc.color.hex_code or pc.color.code }}"></span>
                                 <span>{{ pc.color.name }}</span>
                             </div>
 
@@ -130,7 +136,7 @@
                     <p><span>Guarantee:</span> {{ p.guarantee }}</p>
                     {% endif %}
 
-                    {% if p.size_unit %}
+                    {% if p.requires_size and p.size_unit %}
                     <p><span>Unit:</span> {{ p.size_unit|upper }}</p>
                     {% endif %}
                 </div>

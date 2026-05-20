@@ -2333,6 +2333,7 @@ let lightboxMouseEndX = 0;
 let isLightboxDragging = false;
 
 const DETAIL_PRODUCT_ID = Number("{{ product.id }}");
+const DETAIL_REQUIRES_SIZE = {{ 'true' if product.requires_size else 'false' }};
 let selectedSize = null;
 let selectedSizeLabel = null;
 let selectedColorId = new URLSearchParams(window.location.search).get("color") || null;
@@ -2351,7 +2352,7 @@ function selectSize(el) {
 /* ================= CART TOGGLE ================= */
 function toggleCart(productId, btn) {
 
-    if (!selectedSize) {
+    if (DETAIL_REQUIRES_SIZE && !selectedSize) {
         alert("Please select a size before adding to cart.");
         return;
     }
@@ -2438,7 +2439,7 @@ function renderBuyNowReview(data) {
     data.cart.forEach(item => {
         const meta = [
             item.color_name ? `Color: ${item.color_name}` : "",
-            item.size_label ? `Size: ${item.size_label}` : "Size: Not selected"
+            item.size_label ? `Size: ${item.size_label}` : ""
         ].filter(Boolean).join(" | ");
         reviewHTML += `
             <div class="review-item-row">
@@ -2475,7 +2476,7 @@ function openBuyNowReview() {
 }
 
 function handleProductBuyNow(productId) {
-    if (!selectedSize) {
+    if (DETAIL_REQUIRES_SIZE && !selectedSize) {
         alert("Please select a size before buying.");
         return;
     }
@@ -3237,7 +3238,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="property-card">
                     <strong>SKU</strong>
-                    {{ 'Belt-' ~ product.id }}
+                    {{ (product.product_type or 'belt')|title ~ '-' ~ product.id }}
                 </div>
             </div>
 
@@ -3274,7 +3275,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="color-list">
 {% for color in product.product_colors %}
 <span class="color-dot"
-      style="background: {{ color.color.code }}"
+      style="background: {{ color.color.hex_code or color.color.code }}"
       data-color-id="{{ color.color.id }}"
       data-color-name="{{ color.color.name }}"
       title="{{ color.color.name }}">
@@ -3283,6 +3284,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     </div>
                 </div>
+                {% if product.requires_size %}
                 <div class="property-card">
                     <strong class="size-row-title">
                         <span>Size</span>
@@ -3301,6 +3303,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         {% endfor %}
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -3332,7 +3335,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <details class="detail-row">
             <summary>Additional Details</summary>
             <div class="detail-row-content">
-                <p>SKU: {{ 'Belt-' ~ product.id }}</p>
+                <p>SKU: {{ (product.product_type or 'belt')|title ~ '-' ~ product.id }}</p>
                 <p>Warranty: {{ product.guarantee or '2 Year Warranty' }}</p>
                 {% if tags %}
                     <p>Category: {{ tags[0].tag }}</p>

@@ -1,21 +1,33 @@
 {% extends "admin/base_admin.html" %}
 
 {% block content %}
+{% set errors = errors or {} %}
+{% set form_data = form_data or {} %}
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css"/>
 
+{% if selected_color_ids is not defined %}
 {% set selected_color_ids = product.product_colors | map(attribute='color_id') | list %}
+{% endif %}
 
 <div class="product-page">
     <div class="page-header">
         <div>
-            <h2>Edit Product</h2>
-            <p>Update product details, pricing, sizes and media.</p>
+            <h2>Edit {{ singular_label or 'Product' }}</h2>
+            <p>Update product details, pricing{% if requires_size %}, sizes{% endif %} and media.</p>
         </div>
     </div>
 
     <div class="glass premium-form-card">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="form-alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
         <form method="POST" enctype="multipart/form-data" id="editProductForm">
+            <input type="hidden" name="product_type" value="{{ product_type or product.product_type or 'belt' }}">
 
             <div class="form-section">
                 <h3>Basic Details</h3>
@@ -25,10 +37,14 @@
                     <input
                         type="text"
                         name="name"
-                        value="{{ product.name }}"
+                        value="{{ form_data.get('name', product.name) }}"
                         placeholder="Enter product name"
+                        class="{% if errors.get('name') %}field-error{% endif %}"
                         required
                     >
+                    {% if errors.get('name') %}
+                    <small class="field-error-message">{{ errors.get('name') }}</small>
+                    {% endif %}
                 </div>
 
                 <div class="grid-2">
@@ -37,7 +53,7 @@
                         <input
                             type="text"
                             name="offer"
-                            value="{{ product.offer or '' }}"
+                            value="{{ form_data.get('offer', product.offer or '') }}"
                             placeholder="e.g. 20% OFF"
                             readonly
                         >
@@ -48,7 +64,7 @@
                         <input
                             type="text"
                             name="guarantee"
-                            value="{{ product.guarantee or '' }}"
+                            value="{{ form_data.get('guarantee', product.guarantee or '') }}"
                             placeholder="e.g. 1 Year Warranty"
                         >
                     </div>
@@ -59,7 +75,7 @@
                     <input
                         type="text"
                         name="material"
-                        value="{{ product.material or '' }}"
+                        value="{{ form_data.get('material', product.material or '') }}"
                         placeholder="e.g. Genuine Leather"
                     >
                 </div>
@@ -74,7 +90,7 @@
                         <input
                             type="number"
                             name="original_price"
-                            value="{{ product.original_price or '' }}"
+                            value="{{ form_data.get('original_price', product.original_price or '') }}"
                             placeholder="Enter original price"
                             required
                         >
@@ -85,7 +101,7 @@
                         <input
                             type="number"
                             name="discount_percent"
-                            value="{{ product.discount_percent or 0 }}"
+                            value="{{ form_data.get('discount_percent', product.discount_percent or 0) }}"
                             placeholder="Enter discount"
                             min="0"
                             max="100"
@@ -100,7 +116,7 @@
                             min="0"
                             max="5"
                             name="rating"
-                            value="{{ product.rating or '' }}"
+                            value="{{ form_data.get('rating', product.rating or '') }}"
                             placeholder="Optional"
                         >
                     </div>
@@ -121,10 +137,11 @@
                         name="description"
                         rows="5"
                         placeholder="Write detailed product description"
-                    >{{ product.description or '' }}</textarea>
+                    >{{ form_data.get('description', product.description or '') }}</textarea>
                 </div>
             </div>
 
+            {% if requires_size %}
             <div class="form-section">
                 <h3>Size Details</h3>
 
@@ -132,8 +149,9 @@
                     <div class="form-group">
                         <label>Size Unit</label>
                         <select name="size_unit">
-                            <option value="inch" {% if product.size_unit == 'inch' %}selected{% endif %}>Inch</option>
-                            <option value="cm" {% if product.size_unit == 'cm' %}selected{% endif %}>CM</option>
+                            {% set selected_unit = form_data.get('size_unit', product.size_unit or 'inch') %}
+                            <option value="inch" {% if selected_unit == 'inch' %}selected{% endif %}>Inch</option>
+                            <option value="cm" {% if selected_unit == 'cm' %}selected{% endif %}>CM</option>
                         </select>
                     </div>
 
@@ -142,12 +160,17 @@
                         <input
                             type="text"
                             name="sizes"
-                            value="{% for s in product.sizes %}{{ s.size_label }}{% if not loop.last %}, {% endif %}{% endfor %}"
+                            value="{% if form_data.get('sizes') is not none %}{{ form_data.get('sizes') }}{% else %}{% for s in product.sizes %}{{ s.size_label }}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}"
                             placeholder="e.g. 30,32,34,36"
+                            class="{% if errors.get('sizes') %}field-error{% endif %}"
                         >
+                        {% if errors.get('sizes') %}
+                        <small class="field-error-message">{{ errors.get('sizes') }}</small>
+                        {% endif %}
                     </div>
                 </div>
             </div>
+            {% endif %}
 
             <div class="form-section">
                 <h3>Current Product Images</h3>
@@ -204,7 +227,10 @@
             </div>
 
             <div class="form-section">
-                <h3>Colors & Images (Add More)</h3>
+                <div class="section-title-row">
+                    <h3>Colors & Images (Add More)</h3>
+                    <a href="/admin/colors" class="manage-colors-link">Manage Colors</a>
+                </div>
 
                 <div class="color-image-grid">
 {% for color in colors %}
@@ -218,7 +244,7 @@
                {% if color.id in selected_color_ids %}checked{% endif %}
                onchange="toggleUpload(this, {{ color.id }})">
 
-        <span class="color-circle" style="background: {{ color.code }}"></span>
+        <span class="color-circle" style="background: {{ color.hex_code or color.code }}"></span>
         <strong class="color-name">{{ color.name }}</strong>
     </label>
 
@@ -317,14 +343,14 @@
                     <input
                         type="text"
                         name="tags"
-                        value="{% for t in product.tags %}{{ t.tag }}{% if not loop.last %}, {% endif %}{% endfor %}"
+                        value="{% if form_data.get('tags') is not none %}{{ form_data.get('tags') }}{% else %}{% for t in product.tags %}{{ t.tag }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}"
                         placeholder="e.g. leather, premium"
                     >
                 </div>
             </div>
 
             <button type="submit" class="btn premium-btn">
-                Update Product
+                Update {{ singular_label or 'Product' }}
             </button>
         </form>
     </div>
@@ -385,6 +411,49 @@
     color: #0A5C56;
     font-weight: 400;
     text-decoration: none;
+}
+.section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.section-title-row h3 {
+    margin-bottom: 0;
+}
+
+.manage-colors-link {
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    color: #0A5C56;
+    background: #ffffff;
+    font-size: 13px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.form-alert {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 14px;
+}
+.field-error {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.field-error-message {
+    display: block;
+    margin-top: 6px;
+    color: #dc2626;
+    font-size: 12px;
+    line-height: 1.35;
 }
 .product-page {
     padding: 30px;

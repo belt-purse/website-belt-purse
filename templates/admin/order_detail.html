@@ -233,8 +233,8 @@ button:hover {
             <div class="item">
                 <img src="{{ order_item_image_url(item) }}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:10px;margin-right:10px;vertical-align:middle;">
                 Product: {{ item.product.name if item.product else 'Product #' ~ item.product_id }} |
-                Size: {{ item.size.size_label if item.size else '-' }} |
-                Color: {{ item.color.name if item.color else '-' }} |
+                {% if item.size %}Size: {{ item.size.size_label }} |{% endif %}
+                {% if item.color %}Color: {{ item.color.name }} |{% endif %}
                 Qty: {{ item.quantity }} |
                 Price: ₹{{ item.price }}
             </div>

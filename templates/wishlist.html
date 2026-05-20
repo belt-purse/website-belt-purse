@@ -204,12 +204,7 @@ function openSizeModal(productId, colorId = "") {
         .then(res => res.json())
         .then(sizes => {
 
-            if (!sizes || sizes.length === 0) {
-                alert("No sizes available");
-                return;
-            }
-
-            let sizeId = sizes[0].id; // default first size
+            let sizeId = sizes && sizes.length ? sizes[0].id : null;
 
             return fetch(`/cart/toggle/${productId}`, {
                 method: "POST",
@@ -262,11 +257,11 @@ document.addEventListener("DOMContentLoaded", () => {
             fetch(`/product/sizes/${id}`)
             .then(res => res.json())
             .then(sizes => {
-                if (!sizes || sizes.length === 0) throw {message: "No sizes available"};
+                let sizeId = sizes && sizes.length ? sizes[0].id : null;
                 return fetch(`/add_to_cart/${id}`, {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({size_id: sizes[0].id, color_id: color || null})
+                    body: JSON.stringify({size_id: sizeId, color_id: color || null})
                 });
             })
             .then(res => res.json())
@@ -339,9 +334,7 @@ function moveAllToCart() {
                 .then(res => res.json())
                 .then(sizes => {
 
-                    if (!sizes || sizes.length === 0) return;
-
-                    let sizeId = sizes[0].id;
+                    let sizeId = sizes && sizes.length ? sizes[0].id : null;
 
                     return fetch(`/add_to_cart/${id}`, {
                         method: "POST",

@@ -31,10 +31,12 @@
                         Color: {{ p.color_name }}
                     </p>
                     {% endif %}
+                    {% if p.size_label %}
                     <p class="cart-variant cart-size-row">
                         <span class="cart-size-dot"></span>
-                        Size: {{ p.size_label or 'Not selected' }}
+                        Size: {{ p.size_label }}
                     </p>
+                    {% endif %}
                  <p class="price" id="price-{{ variant_key }}">₹{{ p.price }}</p>
                  </div>
 
@@ -410,9 +412,9 @@ function loadGuestCart() {
             const savedLabel = item.sizeLabel || item.size_label;
             if (savedLabel) return savedLabel;
             const sizeId = item.sizeId || item.size_id;
-            if (!sizeId) return "Not selected";
+            if (!sizeId) return "";
             const exactSize = (product.sizes || []).find(size => String(size.id) === String(sizeId));
-            return exactSize?.label || "Not selected";
+            return exactSize?.label || "";
         };
 
         guestCart.forEach(item => {
@@ -437,7 +439,7 @@ function loadGuestCart() {
                 <div class="details cart-item-details">
                     <h3>${product.name}</h3>
                     ${product.color_variant ? `<p class="cart-variant"><span style="background:${product.color_variant.code}"></span>Color: ${product.color_variant.name}</p>` : ""}
-                    <p class="cart-variant cart-size-row"><span class="cart-size-dot"></span>Size: ${sizeLabel}</p>
+                    ${sizeLabel ? `<p class="cart-variant cart-size-row"><span class="cart-size-dot"></span>Size: ${sizeLabel}</p>` : ""}
                     <p class="price">₹${price}</p>
                 </div>
                 <div class="right-box cart-item-actions">
@@ -679,7 +681,7 @@ function loadCheckoutReview(){
         data.cart.forEach(item=>{
             const meta = [
                 item.color_name ? `Color: ${item.color_name}` : "",
-                item.size_label ? `Size: ${item.size_label}` : "Size: Not selected"
+                item.size_label ? `Size: ${item.size_label}` : ""
             ].filter(Boolean).join(" | ");
             reviewHTML += `
             <div class="review-item-row">

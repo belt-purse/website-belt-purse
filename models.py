@@ -72,6 +72,8 @@ class Product(db.Model):
     material = db.Column(db.String(255))
     description = db.Column(db.Text)
 
+    product_type = db.Column(db.String(50), default="belt")
+    requires_size = db.Column(db.Boolean, default=True)
     size_unit = db.Column(db.String(20), default="inch")
     is_archived = db.Column(db.Boolean, default=False)
     images = db.relationship('ProductImage', backref='product', cascade="all, delete")
@@ -129,6 +131,7 @@ class Color(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
     code = db.Column(db.String(20))
+    hex_code = db.Column(db.String(20))
 
 class ProductColor(db.Model):
     __tablename__ = 'product_colors'
