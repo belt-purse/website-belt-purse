@@ -2728,3 +2728,108 @@ nav,
         padding: 6px 14px 12px !important;
     }
 }
+
+/* ===== Home content and spacing refinements ===== */
+.blog.section-space .section-heading {
+    text-align: center !important;
+}
+
+.blog.section-space .blog-grid {
+    width: min(1080px, 100%) !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 28px !important;
+    justify-content: center !important;
+    align-items: stretch !important;
+}
+
+.blog.section-space .blog-card {
+    width: 100% !important;
+}
+
+.materials .material-grid .lux-card {
+    padding: 24px 22px !important;
+}
+
+.materials .material-grid .lux-card h3 {
+    margin-bottom: 8px !important;
+}
+
+.materials .material-grid .lux-card p {
+    margin: 0 auto !important;
+    max-width: 260px;
+    line-height: 1.55 !important;
+}
+
+.faq-question {
+    padding-bottom: 12px !important;
+}
+
+.faq-answer {
+    line-height: 1.55 !important;
+}
+
+.faq-item.active .faq-answer {
+    padding-top: 0 !important;
+    padding-bottom: 14px !important;
+}
+
+.contact-form button {
+    align-self: flex-start !important;
+    width: auto !important;
+    min-width: 152px;
+    padding: 11px 24px !important;
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+    border-radius: 999px !important;
+}
+
+@media (max-width: 768px) {
+    .blog.section-space .blog-grid {
+        display: flex !important;
+        grid-template-columns: none !important;
+        width: 100% !important;
+        gap: 10px !important;
+        justify-content: flex-start !important;
+        overflow-x: auto !important;
+        scroll-snap-type: x mandatory !important;
+        padding-bottom: 12px !important;
+    }
+
+    .blog.section-space .blog-card {
+        flex: 0 0 calc(50% - 6px) !important;
+        min-width: calc(50% - 6px) !important;
+    }
+
+    .materials .material-grid .lux-card {
+        padding: 14px 12px !important;
+    }
+
+    .materials .material-grid .lux-card p {
+        max-width: 100%;
+        line-height: 1.4 !important;
+    }
+
+    .faq-question {
+        padding-bottom: 9px !important;
+    }
+
+    .faq-item.active .faq-answer {
+        padding-top: 0 !important;
+        padding-bottom: 11px !important;
+    }
+
+    .contact-form button {
+        min-width: 138px;
+        padding: 10px 20px !important;
+        font-size: 13px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .contact-form button {
+        align-self: stretch !important;
+        width: 100% !important;
+    }
+}
