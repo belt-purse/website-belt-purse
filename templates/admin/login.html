@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Login</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.cdnfonts.com/css/gotham" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
     --bg-primary: #062f2c;
@@ -24,11 +22,11 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: "Gotham", "Inter", sans-serif;
+    font-family: 'Jost', sans-serif !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: "Cormorant Garamond", Georgia, serif !important;
+    font-family: 'Jost', sans-serif !important;
 }
 
 body {
@@ -37,10 +35,7 @@ body {
     justify-content: center;
     align-items: center;
     padding: 16px;
-    background:
-        radial-gradient(circle at top left, rgba(255,255,255,0.05), transparent 40%),
-        radial-gradient(circle at bottom right, rgba(255,255,255,0.04), transparent 40%),
-        linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+    background: rgb(239, 239, 239) !important;
 }
 
 /* glass card */
@@ -50,15 +45,16 @@ body {
 }
 
 .login-box {
-    background: var(--card-bg);
+    background: #ffffff;
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border: 1px solid var(--card-border);
+    border: 1px solid rgba(0,0,0,0.08);
     border-radius: 24px;
     padding: 32px 26px;
     box-shadow: var(--shadow);
     text-align: center;
     animation: fadeUp 0.6s ease;
+    color: #111111;
 }
 
 /* logo (NO BACKGROUND) */
@@ -75,12 +71,12 @@ body {
 .login-box h2 {
     font-size: 26px;
     font-weight: 400;
-    color: var(--text-primary);
+    color: #111111;
     margin-bottom: 6px;
 }
 
 .login-box p.subtitle {
-    color: var(--text-secondary);
+    color: #5f6b68;
     font-size: 13px;
     margin-bottom: 24px;
 }
@@ -94,7 +90,7 @@ body {
 .input-group label {
     font-size: 12px;
     font-weight: 400;
-    color: #eaeaea;
+    color: #263f3b;
     margin-bottom: 6px;
     display: block;
 }
@@ -103,21 +99,21 @@ body {
     width: 100%;
     padding: 13px 14px;
     border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.12);
-    color: #fff;
+    border: 1px solid rgba(0,0,0,0.12);
+    background: #ffffff;
+    color: #111111;
     font-size: 14px;
     outline: none;
     transition: 0.25s;
 }
 
 .input-group input::placeholder {
-    color: #aaa;
+    color: #8a9693;
 }
 
 .input-group input:focus {
-    border-color: #ffffff;
-    background: rgba(255,255,255,0.18);
+    border-color: #0A5C56;
+    background: #ffffff;
 }
 
 /* button */
@@ -127,8 +123,8 @@ body {
     margin-top: 8px;
     border: none;
     border-radius: 14px;
-    background: #ffffff;
-    color: #062f2c;
+    background: linear-gradient(135deg, #0A5C56, #083E3A);
+    color: #ffffff;
     font-size: 14px;
     font-weight: 400;
     cursor: pointer;
@@ -200,6 +196,24 @@ body {
     .logo-box img {
         width: 50px;
     }
+}
+
+.login-box,
+.input-group input,
+.login-btn,
+button,
+input,
+textarea,
+select,
+img:not(.avatar):not(.avatar-img):not(.premium-avatar) {
+    border-radius: 0 !important;
+}
+
+.avatar,
+.avatar-img,
+.premium-avatar,
+.badge {
+    border-radius: 999px !important;
 }
 </style>
 </head>

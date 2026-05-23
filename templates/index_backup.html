@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+
+{% block content %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<style>
+    .index-page-section-white {
+        background: #ffffff !important;
+    }
+
+    .index-page-section-soft {
+        background: #faf7f2 !important;
+    }
+
+    .index-page-section-white,
+    .index-page-section-soft {
+        color: var(--text-default);
+    }
+
+    .featured-collection {
+        background: #faf7f2 !important;
+        padding-bottom: 18px !important;
+        box-shadow: none !important;
+        overflow: hidden !important;
+    }
+
+    .featured-collection .featured-actions {
+        background: #faf7f2 !important;
+        margin-bottom: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .featured-collection + .categories.section-space {
+        margin-top: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .featured-collection .product-card,
+    .featured-collection .product-card:hover {
+        transform: none !important;
+        box-shadow: 0 18px 44px rgba(8, 62, 58, 0.1) !important;
+        transition: none !important;
+        border-radius: 18px !important;
+        overflow: hidden !important;
+    }
+
+    .featured-collection .product-image-wrapper {
+        width: 100% !important;
+        aspect-ratio: 1 / 1 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+
+    .featured-collection .product-image-wrapper::before,
+    .featured-collection .product-image-wrapper::after {
+        display: none !important;
+        content: none !important;
+    }
+
+    .featured-collection .product-image-wrapper img,
+    .featured-collection .product-card img,
+    .featured-collection .product-img,
+    .featured-collection .product-card:hover img {
+        width: 100% !important;
+        height: 100% !important;
+        aspect-ratio: 1 / 1 !important;
+        display: block !important;
+        object-fit: cover !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 18px 18px 0 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+
+    @media (max-width: 768px) {
+        .hero {
+            --index-mobile-section-bg: #ffffff;
+            background: var(--index-mobile-section-bg) !important;
+        }
+
+        .featured-collection {
+            --index-mobile-section-bg: #faf7f2;
+            background: var(--index-mobile-section-bg) !important;
+            padding-bottom: 18px !important;
+        }
+
+        .categories {
+            --index-mobile-section-bg: #ffffff;
+            background: var(--index-mobile-section-bg) !important;
+        }
+
+        .blog {
+            --index-mobile-section-bg: #faf7f2;
+            background: var(--index-mobile-section-bg) !important;
+        }
+
+        .materials {
+            --index-mobile-section-bg: #ffffff;
+            background: var(--index-mobile-section-bg) !important;
+        }
+
+        .services {
+            --index-mobile-section-bg: #faf7f2;
+            background: var(--index-mobile-section-bg) !important;
+        }
+
+        .why {
+            --index-mobile-section-bg: #ffffff;
+            background: var(--index-mobile-section-bg) !important;
+        }
+
+        .faq {
+            --index-mobile-section-bg: #faf7f2;
+            background: var(--index-mobile-section-bg) !important;
+        }
+
+        .contact {
+            --index-mobile-section-bg: #ffffff;
+            background: var(--index-mobile-section-bg) !important;
+        }
+
+        .featured-collection .product-container,
+        .featured-collection .featured-actions {
+            background: #faf7f2 !important;
+        }
+
+        .featured-collection .product-container {
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
+            align-items: flex-start !important;
+        }
+
+        section.products.featured-collection .product-container,
+        section.products.featured-collection .featured-actions {
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .featured-collection .product-card,
+        .featured-collection .product-card:hover {
+            background: #ffffff !important;
+            border: 1px solid rgba(8, 62, 58, 0.08) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 12px 30px rgba(8, 62, 58, 0.08) !important;
+            height: auto !important;
+            margin-bottom: 0 !important;
+            overflow: hidden !important;
+        }
+
+        section.products.featured-collection .product-container .product-card,
+        section.products.featured-collection .product-container .product-card:hover,
+        section.products.featured-collection .product-container .product-card:focus,
+        section.products.featured-collection .product-container .product-card:active {
+            background: #ffffff !important;
+            box-shadow: 0 12px 30px rgba(8, 62, 58, 0.08) !important;
+            outline: 0;
+        }
+
+        .featured-collection .product-info,
+        .featured-collection .price-box,
+        .featured-collection .rating,
+        .featured-collection .product-info h4 {
+            background: #ffffff !important;
+        }
+
+        .featured-collection .product-info {
+            padding-top: 8px !important;
+            padding-bottom: 10px !important;
+        }
+
+        .featured-collection .product-image-wrapper {
+            padding: 0 !important;
+            margin: 0 !important;
+            background: #ffffff !important;
+            border: 0 !important;
+            border-radius: 18px 18px 0 0 !important;
+            box-shadow: none !important;
+            overflow: hidden !important;
+        }
+
+        .featured-collection .product-image-wrapper img,
+        .featured-collection .product-card img,
+        .featured-collection .product-img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            background: #ffffff !important;
+            border-radius: 18px 18px 0 0 !important;
+        }
+
+        .categories .cat-list,
+        .blog .blog-grid,
+        .materials .material-grid,
+        .services .service-grid,
+        .why .why-grid,
+        .faq .faq-container,
+        .contact .contact-container {
+            background: transparent !important;
+        }
+
+        .blog .blog-card,
+        .blog .blog-overlay,
+        .services .service-card {
+            background-color: transparent !important;
+        }
+
+        .faq .faq-item {
+            background: #faf7f2 !important;
+            border-color: rgba(8, 62, 58, 0.08) !important;
+            box-shadow: 0 8px 20px rgba(8, 62, 58, 0.04) !important;
+        }
+    }
+
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    document.querySelectorAll(".faq-question").forEach(button => {
+        button.addEventListener("click", () => {
+
+            const faqItem = button.parentElement;
+            const answer = faqItem.querySelector(".faq-answer");
+            const icon = button.querySelector("span");
+
+            const isOpen = faqItem.classList.contains("active");
+
+            document.querySelectorAll(".faq-item").forEach(item => {
+                item.classList.remove("active");
+                item.querySelector(".faq-answer").style.maxHeight = null;
+                item.querySelector(".faq-question span").innerText = "+";
+            });
+
+            if (!isOpen) {
+                faqItem.classList.add("active");
+                answer.style.maxHeight = answer.scrollHeight + 24 + "px";
+                icon.innerText = "−";
+            }
+        });
+    });
+
+});
+</script>
+
+<!-- 🎬 HERO -->
+<section class="hero index-page-section-white">
+    <div class="hero-slider" id="heroSlider">
+
+        <!-- Slide 1 -->
+        <div class="hero-slide active">
+            <img src="/static/images/herosection1.png" alt="BeltPurse Hero 1" class="hero-bg-img">
+
+            <div class="hero-overlay"></div>
+
+            <div class="hero-content">
+                <span class="hero-tagline">Upgrade Your Everyday Style</span>
+                <h1>Textured Formal Belt</h1>
+                <p>Slightly glossy finish with crossing line texture</p>
+                <a href="/products-page" class="hero-btn">Explore Collection</a>
+            </div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="hero-slide">
+            <img src="/static/images/herosection2.png" alt="BeltPurse Hero 2" class="hero-bg-img">
+
+            <div class="hero-overlay"></div>
+
+            <div class="hero-content">
+                <span class="hero-tagline">Premium Belts, Crafted for You</span>
+                <h1>Carbon Fiber Design Belt</h1>
+                <p>Matt finish with a decent premium look</p>
+                <a href="/products-page" class="hero-btn hero-btn-shop">Shop Premium Belts</a>
+            </div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="hero-slide">
+            <img src="/static/images/herosection3.png" alt="BeltPurse Hero 3" class="hero-bg-img">
+
+            <div class="hero-overlay"></div>
+
+            <div class="hero-content">
+                <span class="hero-tagline">Smart Design Meets Formal Style</span>
+                <h1>Glossy Dot Texture Belt</h1>
+                <p>A refined formal belt with all-over dotted texture</p>
+                <a href="/products-page" class="hero-btn">Upgrade Your Style</a>
+            </div>
+        </div>
+
+        <!-- dots -->
+        <div class="hero-dots">
+            <span class="dot active"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
+
+    </div>
+</section>
+
+<!-- 🛍 PRODUCTS -->
+<section class="products featured-collection index-page-section-soft">
+    <div class="section-heading featured-header">
+        <h2>Featured Collection</h2>
+    </div>
+
+    <div id="products" class="product-container"></div>
+
+    <div class="featured-actions">
+        <a href="/products-page" class="featured-explore-btn">Shop Premium Belts</a>
+    </div>
+</section>
+
+<!-- 🧩 CATEGORIES
+<section class="categories section-space">
+    <div class="section-heading">
+        <span>SHOP BY STYLE</span>
+        <h2>Shop by Category</h2>
+    </div>
+
+    <div class="cat-grid">
+        <div class="cat-card">Leather Belts</div>
+        <div class="cat-card">Formal Belts</div>
+        <div class="cat-card">Casual Belts</div>
+        <div class="cat-card">Premium Collection</div>
+    </div>
+</section>
+-->
+<section class="categories section-space index-page-section-white">
+  <div class="section-heading">
+    <span>SHOP BY STYLE</span>
+    <h2>Shop by Category</h2>
+  </div>
+
+  <div class="cat-list">
+    <div class="cat-row">
+      <div class="cat-image">
+        <img src="/static/images/No flash, no gimmicks — just well-made essentials that feel as good as they look_ Designed for men who value the details @leconteltd.jpg" alt="Leather Belts">
+      </div>
+      <div class="cat-info">
+        <h3>Leather Belts</h3>
+        <p>Timeless essentials crafted for everyday elegance.</p>
+      </div>
+    </div>
+
+    <div class="cat-row">
+      <div class="cat-image">
+        <img src="/static/images/Buy Brown Signature Formal Belt Made In Italy from the Next UK online shop.jpg" alt="Formal Belts">
+      </div>
+      <div class="cat-info">
+        <h3>Formal Belts</h3>
+        <p>Refined styles designed for polished and sophisticated occasions.</p>
+      </div>
+    </div>
+
+    <div class="cat-row">
+      <div class="cat-image">
+        <img src="/static/images/Wrangler Men's Casual Everyday Classic Buffalo Leather Belt for Mens Jeans & Pants, Branded Belt Male Accessories, Light Brown 40.jpg" alt="Casual Belts">
+      </div>
+      <div class="cat-info">
+        <h3>Casual Belts</h3>
+        <p>Relaxed looks with premium comfort and versatility.</p>
+      </div>
+    </div>
+
+    <div class="cat-row">
+      <div class="cat-image">
+        <img src="/static/images/Feathered Edge Bridle Leather Belts.jpg" alt="Premium Collection">
+      </div>
+      <div class="cat-info">
+        <h3>Premium Collection</h3>
+        <p>Luxury pieces made with exceptional attention to detail.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- 📰 BLOG -->
+<section class="blog section-space index-page-section-soft">
+    <div class="section-heading">
+        <span>OUR COLLECTION</span>
+        <h2>From Our Collection</h2>
+    </div>
+
+    <div class="blog-grid">
+        <div class="blog-card">
+            <img src="/static/images/20260413_153959.jpg" alt="">
+            <div class="blog-overlay">
+                <h3>Style Your Belt Right</h3>
+            </div>
+        </div>
+
+        <div class="blog-card">
+            <img src="/static/images/20260413_180520.jpg" alt="">
+            <div class="blog-overlay">
+                <h3>Latest Trends for 2026</h3>
+            </div>
+        </div>
+
+        <div class="blog-card">
+            <img src="/static/images/20260413_175128.jpg" alt="">
+            <div class="blog-overlay">
+                <h3>Luxury Buying Guide</h3>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- 🧵 MATERIALS -->
+<section class="materials section-space index-page-section-white">
+    <div class="section-heading">
+        <span>CRAFTED WITH CARE</span>
+        <h2>Material We Use</h2>
+    </div>
+
+    <div class="material-grid">
+        <div class="lux-card">
+            <h3>Genuine Leather</h3>
+            <p>Genuine Leather: Premium, durable, and designed to age beautifully.</p>
+        </div>
+
+        <div class="lux-card">
+            <h3>PU Leather</h3>
+            <p>Affordable, stylish, and easy to maintain.</p>
+        </div>
+
+        <div class="lux-card">
+            <h3>Canvas & Fabric</h3>
+            <p>Lightweight and perfect for everyday wear.</p>
+        </div>
+
+        <div class="lux-card">
+            <h3>Metal Hardware</h3>
+            <p>Strong buckles designed for long-term durability.</p>
+        </div>
+    </div>
+</section>
+<!-- ================= SERVICES ================= -->
+<!-- ================= SERVICES ================= -->
+<!-- ================= SERVICES ================= -->
+<section class="services section-space index-page-section-soft" id="services">
+    <div class="section-heading">
+        <span>FEATURED SERVICES</span>
+        <h2>Our Services</h2>
+    </div>
+
+    <div class="service-grid">
+
+        <div class="service-card">
+            <div class="service-icon">
+                <i class="fa-solid fa-truck-fast"></i>
+            </div>
+            <h3>Free Shipping Across India</h3>
+            <p>Fast and reliable doorstep delivery, every time.</p>
+             <!--<a href="#" class="service-arrow">
+                <i class="fa-solid fa-arrow-right"></i>-->
+            </a>
+        </div>
+
+        <div class="service-card">
+            <div class="service-icon">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h3>2-Year Warranty on Leather Products</h3>
+            <p>Shop with confidence with our trusted warranty support.</p>
+             <!--<a href="#" class="service-arrow">
+               <i class="fa-solid fa-arrow-right"></i>-->
+            </a>
+        </div>
+
+        <div class="service-card">
+            <div class="service-icon">
+                <i class="fa-solid fa-gem"></i>
+            </div>
+            <h3>Premium Quality Products</h3>
+            <p>Crafted with fine materials for lasting style and durability.</p>
+             <!--<a href="#" class="service-arrow">
+                <i class="fa-solid fa-arrow-right"></i>-->
+            </a>
+        </div>
+
+        <div class="service-card">
+            <div class="service-icon">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h3>Secure Payments</h3>
+            <p>Safe and secure payments for worry-free shopping.</p>
+            <!-- <a href="#" class="service-arrow">
+               <i class="fa-solid fa-arrow-right"></i>-->
+            </a>
+        </div>
+
+    </div>
+</section>
+<!-- ⭐ WHY CHOOSE US -->
+<section class="why section-space index-page-section-white">
+    <div class="section-heading">
+        <span>WHY BeltPurse</span>
+        <h2>Why Choose Us</h2>
+    </div>
+
+   <div class="why-grid">
+    <div class="lux-card">
+        <h3>30+ Years Experience</h3>
+        <p>Trusted craftsmanship in belts & accessories since 1992.</p>
+    </div>
+
+    <div class="lux-card">
+        <h3>Premium Quality</h3>
+        <p>Every product is thoughtfully crafted with fine detail.</p>
+    </div>
+
+   <div class="lux-card">
+    <h3>Corporate Gifting </h3>
+    <p>
+        Perfect for corporate gifting and business partnerships.
+    </p>
+</div>
+
+    <div class="lux-card">
+        <h3>Value for Money</h3>
+        <p>Elegant craftsmanship at affordable pricing.</p>
+    </div>
+</div>
+</section>
+
+
+
+<!-- ================= FAQ ================= -->
+<section class="faq section-space index-page-section-soft" id="faq">
+    <div class="section-heading">
+        <span>QUICK ANSWERS</span>
+        <h2>Frequently Asked Questions</h2>
+    </div>
+
+   <div class="faq-container">
+
+    <div class="faq-item">
+        <button class="faq-question">
+            How does the auto-lock system work?
+            <span>+</span>
+        </button>
+        <div class="faq-answer">
+            The belt uses an advanced auto-lock mechanism with no holes. You simply slide the strap into the buckle and it locks automatically. To release, press the lever on the buckle. It provides a perfect, secure, and hassle-free fit every time.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <button class="faq-question">
+            Is the belt adjustable for all waist sizes?
+            <span>+</span>
+        </button>
+        <div class="faq-answer">
+            Yes, the belt comes with a micro-adjustable design that allows precise fitting. You can easily adjust it for a perfect fit without fixed holes, making it suitable for most waist sizes.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <button class="faq-question">
+            Is the belt comfortable for daily use?
+            <span>+</span>
+        </button>
+        <div class="faq-answer">
+            Absolutely. Our belts are feather-light, breathable, and designed with a wrinkle-free strip for all-day comfort. The dual-coated finish ensures durability while maintaining a premium look.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <button class="faq-question">
+            How can I register for the 2-year warranty?
+            <span>+</span>
+        </button>
+        <div class="faq-answer">
+            You can easily register or claim your warranty through your account. Go to <strong>My Account → Help Center → Warranty Claim</strong> and submit the form with your order details. Our team will review and assist you quickly.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <button class="faq-question">
+            More Question?
+            <span>+</span>
+        </button>
+        <div class="faq-answer">
+            
+                Get in touch! We’re here to quickly provide you with the info and services you need & answer any question you may have.
+            
+                Call/whatsapp : <strong>+91 7000747936</strong>
+                <strong> only between 11am to 8pm (Monday to Saturday)</strong>
+            
+        </div>
+    </div>
+
+</div>
+</section>
+
+<!-- ================= CONTACT ================= -->
+<section class="contact section-space index-page-section-white" id="contact">
+    <div class="section-heading">
+        <span> GET IN TOUCH</span>
+        <h2>   Contact Us</h2>
+    </div>
+
+    <div class="contact-container">
+
+        <div class="contact-info-card">
+                <p><strong>Email:</strong> beltpurse.com@gmail.com</p>
+            <p><strong>Phone:</strong> +91 7000747936</p>
+            <p><strong>Location:</strong> India</p>
+        </div>
+
+        <form class="contact-form">
+            <input type="text" id="name" name="name" placeholder="Your Name" required>
+            <input type="email" id="email" name="email" placeholder="Your Email" required>
+            <textarea id="message" name="message" placeholder="Your Message" required></textarea>
+            <button type="submit">Send Message</button>
+        </form>
+
+    </div>
+</section>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const contactForm = document.querySelector(".contact-form");
+    if (contactForm) {
+        contactForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(contactForm);
+            const data = {
+                name: formData.get("name"),
+                email: formData.get("email"),
+                message: formData.get("message")
+            };
+
+            fetch("/send-contact-email", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(d => {
+                if (!d.success) {
+                    alert(d.message || "Something went wrong");
+                    return;
+                }
+                alert(d.message || "Email sent successfully");
+                contactForm.reset();
+            })
+            .catch(err => {
+                console.error("Contact email error:", err);
+                alert("Something went wrong");
+            });
+        });
+    }
+
+    const slides = document.querySelectorAll(".hero-slide");
+    const dots = document.querySelectorAll(".dot");
+    const slider = document.getElementById("heroSlider");
+
+    let current = 0;
+    let autoSlide;
+
+    function showSlide(index) {
+        slides.forEach((slide, i) => {
+            slide.classList.toggle("active", i === index);
+            dots[i].classList.toggle("active", i === index);
+
+            const video = slide.querySelector("video");
+            if (!video) return;
+
+            if (i === index) {
+                video.currentTime = 0;
+                video.play().catch(() => {});
+            } else {
+                video.pause();
+            }
+        });
+
+        current = index;
+    }
+
+    function nextSlide() {
+        let next = (current + 1) % slides.length;
+        showSlide(next);
+    }
+
+    function startAutoSlide() {
+        autoSlide = setInterval(nextSlide, 6000);
+    }
+
+    function stopAutoSlide() {
+        clearInterval(autoSlide);
+    }
+
+    dots.forEach((dot, index) => {
+        dot.addEventListener("click", () => {
+            stopAutoSlide();
+            showSlide(index);
+            startAutoSlide();
+        });
+    });
+
+    /* swipe support */
+    let startX = 0;
+
+    slider.addEventListener("touchstart", (e) => {
+        startX = e.touches[0].clientX;
+    });
+
+    slider.addEventListener("touchend", (e) => {
+        let endX = e.changedTouches[0].clientX;
+        let diff = startX - endX;
+
+        if (Math.abs(diff) > 50) {
+            stopAutoSlide();
+
+            if (diff > 0) {
+                showSlide((current + 1) % slides.length);
+            } else {
+                showSlide((current - 1 + slides.length) % slides.length);
+            }
+
+            startAutoSlide();
+        }
+    });
+
+    showSlide(0);
+    startAutoSlide();
+});
+</script>
+<script src="/static/js/script.js"></script>
+
+{% endblock %}

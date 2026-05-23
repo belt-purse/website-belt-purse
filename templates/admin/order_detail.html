@@ -161,6 +161,26 @@ button:hover {
         </div>
 
         <div>
+            <p><strong>Subtotal</strong></p>
+            <p>Rs.{{ order.subtotal_amount if order.subtotal_amount is not none else order.total_amount }}</p>
+        </div>
+
+        <div>
+            <p><strong>Coupon Code Used</strong></p>
+            <p>{{ order.coupon_code or 'None' }}</p>
+        </div>
+
+        <div>
+            <p><strong>Discount Amount</strong></p>
+            <p>Rs.{{ order.discount_amount or 0 }}</p>
+        </div>
+
+        <div>
+            <p><strong>Final Amount</strong></p>
+            <p>Rs.{{ order.final_amount if order.final_amount is not none else order.total_amount }}</p>
+        </div>
+
+        <div>
             <p><strong>Order Status</strong></p>
             <span id="orderStatusBadge" class="status {{ (order.order_status or order.status)|lower|replace(' ', '-') }}">
                 {{ order.order_status or order.status }}

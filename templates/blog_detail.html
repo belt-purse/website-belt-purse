@@ -1,10 +1,19 @@
 {% extends "base.html" %}
+{% block title %}{{ blog.seo_title or blog.title }} | Belt Purse Store{% endblock %}
+{% block meta_description %}{{ (blog.seo_description or blog.content or blog.title) | striptags | truncate(155, True) }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_title %}{{ blog.seo_title or blog.title }}{% endblock %}
+{% block og_description %}{{ (blog.seo_description or blog.content or blog.title) | striptags | truncate(155, True) }}{% endblock %}
+{% block og_image %}{{ blog_image_url(blog.image) }}{% endblock %}
+{% block twitter_title %}{{ blog.seo_title or blog.title }}{% endblock %}
+{% block twitter_description %}{{ (blog.seo_description or blog.content or blog.title) | striptags | truncate(155, True) }}{% endblock %}
+{% block twitter_image %}{{ blog_image_url(blog.image) }}{% endblock %}
 {% block content %}
 
 <style>
 body
 {
- font-family: 'Cormorant Garamond', serif;
+ font-family: 'Jost', sans-serif !important;
 }
 .blog-page {
     max-width: 850px;
@@ -85,7 +94,8 @@ body
     <h1>{{ blog.title }}</h1>
 
     <div class="blog-meta">
-        {{ blog.author }} - {% if blog.created_at %}{{ blog.created_at.strftime('%d %b %Y') }}{% else %}Recently added{% endif %}
+        {% set display_date = blog.blog_date or (blog.created_at.date() if blog.created_at else none) %}
+        {% if display_date %}{{ display_date.strftime('%d %b %Y') }}{% else %}Recently added{% endif %}
     </div>
 
     <img src="{{ blog_image_url(blog.image) }}" alt="{{ blog.title }}">

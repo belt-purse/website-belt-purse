@@ -43,6 +43,16 @@
                     >
                 </div>
 
+                <div class="field-group">
+                    <label>Blog Date</label>
+                    {% set selected_blog_date = blog.blog_date or (blog.created_at.date() if blog.created_at else none) %}
+                    <input
+                        type="date"
+                        name="blog_date"
+                        value="{{ selected_blog_date.strftime('%Y-%m-%d') if selected_blog_date else '' }}"
+                    >
+                </div>
+
             </div>
 
             <!-- Cover Image -->

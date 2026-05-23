@@ -2,10 +2,10 @@ from collections import defaultdict
 from flask_login import login_required, current_user
 import cloudinary
 import cloudinary.uploader
-from flask import Flask, flash, render_template, request, jsonify, session, redirect, abort, url_for
+from flask import Flask, flash, render_template, request, jsonify, session, redirect, abort, url_for, make_response
 from sqlalchemy import exists, text,inspect
 from sqlalchemy.orm import joinedload
-from models import Address, Blog, Cart, Category, Color, EmailHistory, EmailTrack, Order, OrderItem, PasswordResetToken, ProductColor, ProductSize, Review, Tag, Warranty, db, User, Product, ProductImage, ProductVideo, ProductTag, PaymentMethod, WalletTransaction, Ticket
+from models import Address, Blog, Cart, Category, Color, Coupon, CouponUsage, EmailHistory, EmailTrack, HomepageMedia, Order, OrderItem, PasswordResetToken, ProductColor, ProductSize, Review, Tag, Warranty, db, User, Product, ProductImage, ProductVideo, ProductTag, PaymentMethod, WalletTransaction, Ticket
 from flask_login import LoginManager, login_user
 from functools import wraps
 import base64
@@ -16,7 +16,7 @@ import json
 import os
 import re
 import secrets
-from datetime import datetime
+from datetime import date, datetime
 import uuid
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -160,6 +160,35 @@ def ensure_live_db_columns():
     ensure_column_exists("products", "product_type", "product_type VARCHAR(50) DEFAULT 'belt'")
     ensure_column_exists("products", "requires_size", "requires_size BOOLEAN DEFAULT TRUE")
     ensure_column_exists("colors", "hex_code", "hex_code VARCHAR(20)")
+    ensure_column_exists("blog", "blog_date", "blog_date DATE")
+    ensure_column_exists("orders", "coupon_code", "coupon_code VARCHAR(50)")
+    ensure_column_exists("orders", "discount_amount", "discount_amount DOUBLE PRECISION", "discount_amount FLOAT")
+    ensure_column_exists("orders", "subtotal_amount", "subtotal_amount DOUBLE PRECISION", "subtotal_amount FLOAT")
+    ensure_column_exists("orders", "final_amount", "final_amount DOUBLE PRECISION", "final_amount FLOAT")
+    ensure_column_exists("coupons", "discount_type", "discount_type VARCHAR(20) DEFAULT 'fixed'")
+    ensure_column_exists("coupons", "discount_value", "discount_value DOUBLE PRECISION DEFAULT 0", "discount_value FLOAT DEFAULT 0")
+    ensure_column_exists("coupons", "min_order_amount", "min_order_amount DOUBLE PRECISION", "min_order_amount FLOAT")
+    ensure_column_exists("coupons", "max_discount_amount", "max_discount_amount DOUBLE PRECISION", "max_discount_amount FLOAT")
+    ensure_column_exists("coupons", "valid_from", "valid_from DATE")
+    ensure_column_exists("coupons", "valid_until", "valid_until DATE")
+    ensure_column_exists("coupons", "usage_limit", "usage_limit INTEGER")
+    ensure_column_exists("coupons", "used_count", "used_count INTEGER DEFAULT 0")
+    ensure_column_exists("coupons", "per_user_limit", "per_user_limit INTEGER DEFAULT 1")
+    ensure_column_exists("coupons", "updated_at", "updated_at TIMESTAMP WITHOUT TIME ZONE", "updated_at DATETIME")
+    ensure_column_exists("homepage_media", "media_type", "media_type VARCHAR(30)")
+    ensure_column_exists("homepage_media", "title", "title VARCHAR(255)")
+    ensure_column_exists("homepage_media", "subtitle", "subtitle VARCHAR(500)")
+    ensure_column_exists("homepage_media", "button_text", "button_text VARCHAR(100)")
+    ensure_column_exists("homepage_media", "button_link", "button_link VARCHAR(500)")
+    ensure_column_exists("homepage_media", "media_url", "media_url VARCHAR(500)")
+    ensure_column_exists("homepage_media", "mobile_media_url", "mobile_media_url VARCHAR(500)")
+    ensure_column_exists("homepage_media", "public_id", "public_id VARCHAR(255)")
+    ensure_column_exists("homepage_media", "mobile_public_id", "mobile_public_id VARCHAR(255)")
+    ensure_column_exists("homepage_media", "alt_text", "alt_text VARCHAR(255)")
+    ensure_column_exists("homepage_media", "sort_order", "sort_order INTEGER DEFAULT 0")
+    ensure_column_exists("homepage_media", "is_active", "is_active BOOLEAN DEFAULT TRUE")
+    ensure_column_exists("homepage_media", "created_at", "created_at TIMESTAMP WITHOUT TIME ZONE", "created_at DATETIME")
+    ensure_column_exists("homepage_media", "updated_at", "updated_at TIMESTAMP WITHOUT TIME ZONE", "updated_at DATETIME")
     ensure_column_exists(
         "tickets",
         "updated_at",
@@ -229,11 +258,56 @@ def ensure_live_db_columns():
 
     print("SAFE DB MIGRATION: completed")
 
+
+def ensure_default_coupons():
+    default_coupons = [
+        {
+            "code": "FIRST30",
+            "title": "Rs.30 OFF First Order",
+            "discount_type": "fixed",
+            "discount_value": 30,
+            "min_order_amount": None,
+            "first_order_only": True,
+            "per_user_limit": 1,
+        },
+        {
+            "code": "FIRST50",
+            "title": "Rs.50 OFF Above 1499",
+            "discount_type": "fixed",
+            "discount_value": 50,
+            "min_order_amount": 1499,
+            "first_order_only": False,
+            "per_user_limit": 1,
+        },
+    ]
+
+    for coupon_data in default_coupons:
+        coupon = Coupon.query.filter_by(code=coupon_data["code"]).first()
+        if not coupon:
+            coupon = Coupon(code=coupon_data["code"])
+            db.session.add(coupon)
+            coupon.title = coupon_data["title"]
+            coupon.discount_type = coupon_data["discount_type"]
+            coupon.discount_value = coupon_data["discount_value"]
+            coupon.min_order_amount = coupon_data["min_order_amount"]
+            coupon.first_order_only = coupon_data["first_order_only"]
+            coupon.per_user_limit = coupon_data["per_user_limit"]
+            coupon.is_active = True
+            coupon.updated_at = datetime.utcnow()
+        elif not coupon.discount_value:
+            coupon.discount_type = coupon.discount_type or coupon_data["discount_type"]
+            coupon.discount_value = coupon_data["discount_value"]
+            coupon.min_order_amount = coupon.min_order_amount if coupon.min_order_amount is not None else coupon_data["min_order_amount"]
+            coupon.per_user_limit = coupon.per_user_limit if coupon.per_user_limit is not None else coupon_data["per_user_limit"]
+
+    db.session.commit()
+
 with app.app_context():
     print("DB IN USE:", describe_database_url(db.engine.url))
     print("SAFE DB MIGRATION: creating missing tables with db.create_all(checkfirst=True)")
     db.create_all()
     ensure_live_db_columns()
+    ensure_default_coupons()
 
 
 @login_manager.user_loader
@@ -242,7 +316,7 @@ def load_user(user_id):
 
 
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
-ALLOWED_VIDEO_EXTENSIONS = {"mp4", "mov", "avi"}
+ALLOWED_VIDEO_EXTENSIONS = {"mp4", "mov", "avi", "webm"}
 
 # Keep this for old local blog image fallback support
 BLOG_UPLOAD_SUBDIR = "uploads/blogs"
@@ -262,9 +336,9 @@ def allowed_file(filename, filetype="image"):
     ext = filename.rsplit(".", 1)[1].lower()
 
     if filetype == "image":
-        return ext in {"png", "jpg", "jpeg", "webp"}
+        return ext in ALLOWED_IMAGE_EXTENSIONS
     else:
-        return ext in {"mp4", "mov", "avi"}
+        return ext in ALLOWED_VIDEO_EXTENSIONS
 
 
 def save_blog_image(file):
@@ -378,7 +452,7 @@ def cart_totals_payload(user_id):
         WHERE c.user_id=:uid
     """), {"uid": user_id}).scalar() or 0
     bag_total = float(bag_total)
-    discount = bag_total * 0.1
+    discount = 0
     shipping = 0
     payable = bag_total - discount + shipping
     cart_count, wishlist_count = user_counts(user_id)
@@ -426,6 +500,43 @@ def consolidate_cart_duplicates(user_id):
 
     if changed:
         db.session.commit()
+
+
+def parse_optional_date(value):
+    value = (value or "").strip()
+    if not value:
+        return None
+    return datetime.strptime(value, "%Y-%m-%d").date()
+
+
+def save_homepage_media_file(file, media_type):
+    if not file or not file.filename:
+        return None, None
+
+    filetype = "video" if media_type == "style_video" else "image"
+    if not allowed_file(file.filename, filetype):
+        return None, None
+
+    result = cloudinary.uploader.upload(
+        file,
+        folder="homepage",
+        resource_type="video" if filetype == "video" else "image"
+    )
+    return result.get("secure_url"), result.get("public_id")
+
+
+def parse_optional_float(value):
+    value = (value or "").strip()
+    if value == "":
+        return None
+    return float(value)
+
+
+def parse_optional_int(value):
+    value = (value or "").strip()
+    if value == "":
+        return None
+    return int(value)
 
 
 def add_cart_item(user, product_id, color_id=None, size_id=None, quantity=1):
@@ -642,17 +753,190 @@ def cart_snapshot_for_user(user_id):
 
     return order_lines, total
 
-def create_pending_order_from_cart(user, selected_address, payment_method="Razorpay"):
+
+SUCCESSFUL_ORDER_STATUSES = (
+    "placed",
+    "confirmed",
+    "shipped",
+    "delivered",
+)
+
+NON_SUCCESSFUL_ORDER_STATUSES = (
+    "Cancelled",
+    "Failed",
+    "Payment Failed",
+)
+
+
+def user_has_successful_order(user_id):
+    return Order.query.filter(
+        Order.user_id == user_id,
+        db.or_(
+            db.func.lower(Order.order_status).in_(SUCCESSFUL_ORDER_STATUSES),
+            db.func.lower(Order.status).in_(SUCCESSFUL_ORDER_STATUSES),
+        )
+    ).first() is not None
+
+
+def coupon_usage_count(coupon_id):
+    return CouponUsage.query.filter_by(coupon_id=coupon_id).count()
+
+
+def coupon_user_usage_count(coupon_id, user_id):
+    return CouponUsage.query.filter_by(coupon_id=coupon_id, user_id=user_id).count()
+
+
+def validate_coupon_for_user(user, coupon_code, subtotal, shipping_amount=0):
+    code = (coupon_code or "").strip().upper()
+    subtotal = float(subtotal or 0)
+    shipping_amount = float(shipping_amount or 0)
+    today = date.today()
+
+    if not code:
+        return {
+            "valid": True,
+            "coupon": None,
+            "coupon_code": None,
+            "discount_amount": 0.0,
+            "subtotal_amount": subtotal,
+            "shipping_amount": shipping_amount,
+            "final_amount": subtotal + shipping_amount,
+            "message": "",
+        }
+
+    coupon = Coupon.query.filter(db.func.upper(Coupon.code) == code).first()
+    if not coupon:
+        return {"valid": False, "message": "Invalid coupon code"}
+
+    if not coupon.is_active:
+        return {"valid": False, "message": "Coupon is inactive"}
+
+    if coupon.valid_from and coupon.valid_from > today:
+        return {"valid": False, "message": "Coupon is not active yet"}
+
+    if coupon.valid_until and coupon.valid_until < today:
+        return {"valid": False, "message": "Coupon expired. Please remove it or apply another code."}
+
+    if coupon.first_order_only and user_has_successful_order(user.id):
+        return {"valid": False, "message": f"{coupon.code} is valid only on your first successful order"}
+
+    usage_count = max(int(coupon.used_count or 0), coupon_usage_count(coupon.id))
+    if coupon.usage_limit is not None and usage_count >= int(coupon.usage_limit):
+        return {"valid": False, "message": "Coupon usage limit reached"}
+
+    per_user_limit = int(coupon.per_user_limit if coupon.per_user_limit is not None else 1)
+    if per_user_limit > 0 and coupon_user_usage_count(coupon.id, user.id) >= per_user_limit:
+        return {"valid": False, "message": "You have already used this coupon"}
+
+    min_order_amount = float(coupon.min_order_amount or 0)
+    if min_order_amount and subtotal < min_order_amount:
+        return {"valid": False, "message": f"{coupon.code} is valid only on orders above Rs.{int(min_order_amount)}"}
+
+    discount_type = (coupon.discount_type or "fixed").lower()
+    discount_value = float(coupon.discount_value or 0)
+    if discount_type == "percent":
+        discount_amount = subtotal * discount_value / 100
+        if coupon.max_discount_amount is not None:
+            discount_amount = min(discount_amount, float(coupon.max_discount_amount or 0))
+    else:
+        discount_amount = discount_value
+
+    discount_amount = min(max(discount_amount, 0), subtotal)
+    final_amount = max(subtotal - discount_amount + shipping_amount, 0)
+
+    return {
+        "valid": True,
+        "coupon": coupon,
+        "coupon_code": coupon.code,
+        "discount_amount": discount_amount,
+        "subtotal_amount": subtotal,
+        "shipping_amount": shipping_amount,
+        "final_amount": final_amount,
+        "message": f"{coupon.title} applied",
+    }
+
+
+def current_coupon_code():
+    return (session.get("coupon_code") or "").strip().upper()
+
+
+@app.route('/apply-coupon', methods=['POST'])
+def apply_coupon():
+    user = get_logged_in_user()
+    if not user:
+        return json_error("Please login to apply coupon", 401)
+
+    data = request.get_json(silent=True) or {}
+    coupon_code = (data.get("coupon_code") or "").strip().upper()
+    if not coupon_code:
+        session.pop("coupon_code", None)
+        session.modified = True
+        _, subtotal = cart_snapshot_for_user(user.id)
+        return jsonify({
+            "success": True,
+            "message": "Coupon removed",
+            "coupon_code": None,
+            "discount_amount": 0,
+            "subtotal_amount": subtotal,
+            "shipping_amount": 0,
+            "final_amount": subtotal,
+        })
+
+    _, subtotal = cart_snapshot_for_user(user.id)
+    if subtotal <= 0:
+        return json_error("Cart is empty", 400)
+
+    coupon_result = validate_coupon_for_user(user, coupon_code, subtotal)
+    if not coupon_result["valid"]:
+        session.pop("coupon_code", None)
+        session.modified = True
+        return jsonify({
+            "success": False,
+            "message": coupon_result["message"],
+            "coupon_code": None,
+            "discount_amount": 0,
+            "subtotal_amount": subtotal,
+            "shipping_amount": 0,
+            "final_amount": subtotal,
+        }), 400
+
+    session["coupon_code"] = coupon_result["coupon_code"]
+    session.modified = True
+
+    return jsonify({
+        "success": True,
+        "message": coupon_result["message"],
+        "coupon_code": coupon_result["coupon_code"],
+        "discount_amount": coupon_result["discount_amount"],
+        "subtotal_amount": coupon_result["subtotal_amount"],
+        "final_amount": coupon_result["final_amount"],
+    })
+
+
+def create_pending_order_from_cart(user, selected_address, payment_method="Razorpay", coupon_code=None):
     order_lines, total = cart_snapshot_for_user(user.id)
     if not order_lines:
         return None, "Cart is empty"
+
+    coupon_result = validate_coupon_for_user(user, coupon_code, total)
+    if not coupon_result["valid"]:
+        session.pop("coupon_code", None)
+        session.modified = True
+        return None, coupon_result["message"]
+
+    discount_amount = coupon_result["discount_amount"]
+    final_amount = coupon_result["final_amount"]
 
     temp_razorpay_order_id = f"TEMP-{user.id}-{uuid.uuid4().hex[:16]}"
 
     order = Order(
         user_id=user.id,
         address_id=selected_address.id,
-        total_amount=total,
+        total_amount=final_amount,
+        subtotal_amount=total,
+        discount_amount=discount_amount,
+        final_amount=final_amount,
+        coupon_code=coupon_result["coupon_code"],
         status="Pending",
         order_status="Pending",
         payment_status="Pending",
@@ -686,8 +970,9 @@ def create_pending_order_from_cart(user, selected_address, payment_method="Razor
 
     db.session.commit()
     return order, None
-def reusable_pending_order(user_id, address_id, total):
+def reusable_pending_order(user_id, address_id, total, coupon_code=None):
     cutoff = datetime.utcnow() - timedelta(hours=2)
+    coupon_code = (coupon_code or "").strip().upper() or None
     return Order.query.filter(
         Order.user_id == user_id,
         Order.address_id == address_id,
@@ -696,7 +981,8 @@ def reusable_pending_order(user_id, address_id, total):
         Order.razorpay_order_id.isnot(None),
         Order.razorpay_order_id.like("order_%"),   # ✅ only real Razorpay order IDs
         Order.created_at >= cutoff,
-        Order.total_amount == total
+        Order.total_amount == total,
+        Order.coupon_code == coupon_code
     ).order_by(Order.id.desc()).first()
 
 def verify_razorpay_signature(razorpay_order_id, razorpay_payment_id, razorpay_signature):
@@ -979,6 +1265,21 @@ def mark_order_paid(order, razorpay_payment_id=None, razorpay_signature=None, se
 
     if not already_paid:
         Cart.query.filter_by(user_id=order.user_id).delete()
+        if order.coupon_code and float(order.discount_amount or 0) > 0:
+            coupon = Coupon.query.filter(db.func.upper(Coupon.code) == order.coupon_code.upper()).first()
+            usage_exists = CouponUsage.query.filter_by(order_id=order.id).first()
+            if coupon and not usage_exists:
+                db.session.add(CouponUsage(
+                    coupon_id=coupon.id,
+                    user_id=order.user_id,
+                    order_id=order.id,
+                    discount_amount=float(order.discount_amount or 0)
+                ))
+                coupon.used_count = coupon_usage_count(coupon.id) + 1
+                coupon.updated_at = datetime.utcnow()
+        if session.get("coupon_code") == (order.coupon_code or ""):
+            session.pop("coupon_code", None)
+            session.modified = True
 
     db.session.commit()
 
@@ -2056,11 +2357,23 @@ def generate_slug(title, blog_id=None):
 
     return slug
 
+
+def get_blog_date_from_form():
+    blog_date_value = (request.form.get("blog_date") or "").strip()
+    if blog_date_value:
+        try:
+            return datetime.strptime(blog_date_value, "%Y-%m-%d").date()
+        except ValueError:
+            return date.today()
+    return date.today()
+
 # 📚 All Blogs (Admin Panel)
 @app.route('/admin/blogs')
 @admin_required
 def admin_blogs():
     blogs = Blog.query.order_by(
+        Blog.blog_date.is_(None),
+        Blog.blog_date.desc(),
         Blog.created_at.is_(None),
         Blog.created_at.desc(),
         Blog.id.desc()
@@ -2088,6 +2401,7 @@ def add_blog():
         category_id = request.form.get('category')
         seo_title = request.form.get('seo_title') or title
         seo_description = request.form.get('seo_description') or content[:150]
+        blog_date = get_blog_date_from_form()
         # 🔥 SEO Friendly Slug
         slug = generate_slug(title)
 
@@ -2123,6 +2437,7 @@ def add_blog():
             seo_title=seo_title,
             seo_description=seo_description,
             tags=tag_objects,
+            blog_date=blog_date,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
             is_published=True
@@ -2151,6 +2466,7 @@ def edit_blog(id):
         blog.category_id = request.form.get('category')
         blog.seo_title = request.form.get('seo_title') or blog.title
         blog.seo_description = request.form.get('seo_description') or blog.content[:150]
+        blog.blog_date = get_blog_date_from_form()
 
         blog.slug=generate_slug(blog.title, blog.id)
 
@@ -2244,6 +2560,407 @@ def admin_orders():
         payment_filter=payment_filter
     )
 
+
+def coupon_form_payload():
+    code = (request.form.get("code") or "").strip().upper()
+    discount_type = (request.form.get("discount_type") or "fixed").strip().lower()
+    if discount_type not in ("fixed", "percent"):
+        discount_type = "fixed"
+
+    per_user_limit = parse_optional_int(request.form.get("per_user_limit"))
+    if per_user_limit is None:
+        per_user_limit = 1
+
+    return {
+        "code": code,
+        "title": (request.form.get("title") or "").strip() or None,
+        "discount_type": discount_type,
+        "discount_value": float(request.form.get("discount_value") or 0),
+        "min_order_amount": parse_optional_float(request.form.get("min_order_amount")),
+        "max_discount_amount": parse_optional_float(request.form.get("max_discount_amount")),
+        "valid_from": parse_optional_date(request.form.get("valid_from")),
+        "valid_until": parse_optional_date(request.form.get("valid_until")),
+        "usage_limit": parse_optional_int(request.form.get("usage_limit")),
+        "per_user_limit": per_user_limit,
+        "first_order_only": bool(request.form.get("first_order_only")),
+        "is_active": bool(request.form.get("is_active")),
+    }
+
+
+def apply_coupon_payload(coupon, payload):
+    coupon.code = payload["code"]
+    coupon.title = payload["title"]
+    coupon.discount_type = payload["discount_type"]
+    coupon.discount_value = payload["discount_value"]
+    coupon.min_order_amount = payload["min_order_amount"]
+    coupon.max_discount_amount = payload["max_discount_amount"]
+    coupon.valid_from = payload["valid_from"]
+    coupon.valid_until = payload["valid_until"]
+    coupon.usage_limit = payload["usage_limit"]
+    coupon.per_user_limit = payload["per_user_limit"]
+    coupon.first_order_only = payload["first_order_only"]
+    coupon.is_active = payload["is_active"]
+    coupon.updated_at = datetime.utcnow()
+
+
+@app.route('/admin/coupons')
+@admin_required
+def admin_coupons():
+    coupons = Coupon.query.order_by(Coupon.created_at.desc(), Coupon.id.desc()).all()
+    return render_template("admin/coupons.html", coupons=coupons, coupon_usage_count=coupon_usage_count)
+
+
+@app.route('/admin/coupons/add', methods=['GET', 'POST'])
+@admin_required
+def admin_add_coupon():
+    if request.method == 'POST':
+        try:
+            payload = coupon_form_payload()
+        except ValueError:
+            flash("Please enter valid coupon values.", "error")
+            return render_template("admin/coupon_form.html", coupon=None, form_data=request.form)
+
+        if not payload["code"] or payload["discount_value"] <= 0:
+            flash("Coupon code and discount value are required.", "error")
+            return render_template("admin/coupon_form.html", coupon=None, form_data=request.form)
+
+        existing = Coupon.query.filter(db.func.upper(Coupon.code) == payload["code"]).first()
+        if existing:
+            flash("Coupon code already exists. Please edit the existing coupon instead.", "error")
+            return redirect(url_for("admin_edit_coupon", coupon_id=existing.id))
+
+        coupon = Coupon()
+        apply_coupon_payload(coupon, payload)
+        db.session.add(coupon)
+        db.session.commit()
+        flash("Coupon created successfully.", "success")
+        return redirect(url_for("admin_coupons"))
+
+    return render_template("admin/coupon_form.html", coupon=None, form_data={})
+
+
+@app.route('/admin/coupons/edit/<int:coupon_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_coupon(coupon_id):
+    coupon = Coupon.query.get_or_404(coupon_id)
+    if request.method == 'POST':
+        try:
+            payload = coupon_form_payload()
+        except ValueError:
+            flash("Please enter valid coupon values.", "error")
+            return render_template("admin/coupon_form.html", coupon=coupon, form_data=request.form)
+
+        duplicate = Coupon.query.filter(
+            db.func.upper(Coupon.code) == payload["code"],
+            Coupon.id != coupon.id
+        ).first()
+        if duplicate:
+            flash("Coupon code already exists. Please edit the existing coupon instead.", "error")
+            return render_template("admin/coupon_form.html", coupon=coupon, form_data=request.form)
+
+        if not payload["code"] or payload["discount_value"] <= 0:
+            flash("Coupon code and discount value are required.", "error")
+            return render_template("admin/coupon_form.html", coupon=coupon, form_data=request.form)
+
+        apply_coupon_payload(coupon, payload)
+        db.session.commit()
+        flash("Coupon updated successfully.", "success")
+        return redirect(url_for("admin_coupons"))
+
+    return render_template("admin/coupon_form.html", coupon=coupon, form_data={})
+
+
+@app.route('/admin/coupons/toggle/<int:coupon_id>')
+@admin_required
+def admin_toggle_coupon(coupon_id):
+    coupon = Coupon.query.get_or_404(coupon_id)
+    coupon.is_active = not coupon.is_active
+    coupon.updated_at = datetime.utcnow()
+    db.session.commit()
+    return redirect(url_for("admin_coupons"))
+
+
+@app.route('/admin/coupons/delete/<int:coupon_id>')
+@admin_required
+def admin_delete_coupon(coupon_id):
+    coupon = Coupon.query.get_or_404(coupon_id)
+    if coupon_usage_count(coupon.id) > 0 or int(coupon.used_count or 0) > 0:
+        coupon.is_active = False
+        coupon.updated_at = datetime.utcnow()
+        db.session.commit()
+        flash("Coupon has usage history, so it was deactivated instead of deleted.", "success")
+    else:
+        db.session.delete(coupon)
+        db.session.commit()
+        flash("Coupon deleted successfully.", "success")
+    return redirect(url_for("admin_coupons"))
+
+
+FALLBACK_HERO_SLIDES = {
+    1: "/static/images/herosection1.png",
+    2: "/static/images/herosection2.png",
+    3: "/static/images/herosection3.png",
+}
+
+FALLBACK_STYLE_VIDEOS = {
+    1: "/static/images/videoplayback (1).mp4",
+    2: "/static/images/videoplayback (2).mp4",
+    3: "/static/images/videoplayback (1).mp4",
+    4: "/static/images/videoplayback (2).mp4",
+}
+
+
+def homepage_media_position_records(media_type):
+    records = HomepageMedia.query.filter_by(media_type=media_type).order_by(
+        HomepageMedia.sort_order.asc(), HomepageMedia.id.asc()
+    ).all()
+    by_position = {}
+    for media in records:
+        position = int(media.sort_order or 0)
+        if position <= 0:
+            position = media.id or 0
+        if position not in by_position:
+            by_position[position] = media
+    return by_position
+
+
+def homepage_media_cards(media_type, fallback_map):
+    by_position = homepage_media_position_records(media_type)
+    positions = sorted(set(fallback_map.keys()) | set(by_position.keys()))
+    cards = []
+    for position in positions:
+        media = by_position.get(position)
+        fallback_url = fallback_map.get(position)
+        uses_fallback = media is None or bool(media and fallback_url and media.media_url == fallback_url and not media.public_id)
+        cards.append({
+            "position": position,
+            "media": media,
+            "preview_url": media.media_url if media and media.media_url else fallback_url,
+            "mobile_preview_url": media.mobile_media_url if media and media.mobile_media_url else None,
+            "is_fallback": uses_fallback,
+            "is_active": True if media is None else bool(media.is_active),
+            "has_fallback": fallback_url is not None,
+        })
+    return cards
+
+
+def next_homepage_media_position(media_type, minimum_position):
+    max_position = db.session.query(db.func.max(HomepageMedia.sort_order)).filter_by(
+        media_type=media_type
+    ).scalar()
+    return max(int(max_position or 0) + 1, minimum_position)
+
+
+def find_homepage_media_position(media_type, position):
+    return HomepageMedia.query.filter_by(media_type=media_type, sort_order=position).order_by(
+        HomepageMedia.id.asc()
+    ).first()
+
+
+def deactivate_duplicate_homepage_positions(media):
+    duplicates = HomepageMedia.query.filter(
+        HomepageMedia.media_type == media.media_type,
+        HomepageMedia.sort_order == media.sort_order,
+        HomepageMedia.id != media.id
+    ).all()
+    for duplicate in duplicates:
+        duplicate.is_active = False
+        duplicate.updated_at = datetime.utcnow()
+
+
+def build_homepage_slides(media_type, fallback_map, include_fallback=True):
+    by_position = homepage_media_position_records(media_type)
+    positions = sorted(set(fallback_map.keys()) | set(by_position.keys()))
+    slides = []
+    for position in positions:
+        media = by_position.get(position)
+        if media:
+            if media.is_active and media.media_url:
+                slides.append(media)
+            continue
+
+        fallback_url = fallback_map.get(position)
+        if include_fallback and fallback_url:
+            slides.append({
+                "media_url": fallback_url,
+                "mobile_media_url": None,
+                "alt_text": "Homepage media",
+                "title": None,
+                "subtitle": None,
+                "button_text": None,
+                "button_link": None,
+                "sort_order": position,
+            })
+    return slides
+
+
+@app.route('/admin/homepage-media')
+@admin_required
+def admin_homepage_media():
+    hero_cards = homepage_media_cards("hero_image", FALLBACK_HERO_SLIDES)
+    video_cards = homepage_media_cards("style_video", FALLBACK_STYLE_VIDEOS)
+    return render_template("admin/homepage_media.html", hero_cards=hero_cards, video_cards=video_cards)
+
+
+@app.route('/admin/homepage-media/update/<media_type>/<int:position>', methods=['POST'])
+@admin_required
+def admin_update_homepage_media_position(media_type, position):
+    if media_type not in ("hero_image", "style_video") or position < 1:
+        abort(404)
+
+    media_file = request.files.get("media_file")
+    media = find_homepage_media_position(media_type, position)
+    is_active = bool(request.form.get("is_active"))
+    fallback_map = FALLBACK_HERO_SLIDES if media_type == "hero_image" else FALLBACK_STYLE_VIDEOS
+    fallback_url = fallback_map.get(position)
+
+    if not media:
+        if not media_file or not media_file.filename:
+            if not fallback_url:
+                flash("Please choose a file to replace this position.", "error")
+                return redirect(url_for("admin_homepage_media"))
+            media = HomepageMedia(media_type=media_type, sort_order=position, media_url=fallback_url)
+        else:
+            media = HomepageMedia(media_type=media_type, sort_order=position)
+        db.session.add(media)
+
+    if media_file and media_file.filename:
+        media_url, public_id = save_homepage_media_file(media_file, media_type)
+        if not media_url:
+            flash("Please upload a valid image/video file.", "error")
+            return redirect(url_for("admin_homepage_media"))
+        media.media_url = media_url
+        media.public_id = public_id
+
+    if media_type == "hero_image":
+        mobile_file = request.files.get("mobile_media_file")
+        if mobile_file and mobile_file.filename:
+            mobile_url, mobile_public_id = save_homepage_media_file(mobile_file, media_type)
+            if not mobile_url:
+                flash("Please upload a valid mobile image file.", "error")
+                return redirect(url_for("admin_homepage_media"))
+            media.mobile_media_url = mobile_url
+            media.mobile_public_id = mobile_public_id
+
+    media.media_type = media_type
+    media.sort_order = position
+    media.title = None
+    media.subtitle = None
+    media.button_text = None
+    media.button_link = None
+    media.alt_text = None
+    media.is_active = is_active
+    media.updated_at = datetime.utcnow()
+    db.session.flush()
+    deactivate_duplicate_homepage_positions(media)
+    db.session.commit()
+    flash(f"{'Hero image' if media_type == 'hero_image' else 'Crafted video'} position {position} updated.", "success")
+    return redirect(url_for("admin_homepage_media"))
+
+
+@app.route('/admin/homepage-media/add-extra/<media_type>', methods=['POST'])
+@admin_required
+def admin_add_extra_homepage_media(media_type):
+    if media_type not in ("hero_image", "style_video"):
+        abort(404)
+
+    minimum_position = 4 if media_type == "hero_image" else 5
+    try:
+        requested_position = int(request.form.get("position") or 0)
+    except ValueError:
+        requested_position = 0
+    position = requested_position if requested_position >= minimum_position else next_homepage_media_position(media_type, minimum_position)
+
+    if find_homepage_media_position(media_type, position):
+        flash(f"Position {position} already exists. Change that position instead.", "error")
+        return redirect(url_for("admin_homepage_media"))
+
+    media_file = request.files.get("media_file")
+    media_url, public_id = save_homepage_media_file(media_file, media_type)
+    if not media_url:
+        flash("Please upload a valid image/video file.", "error")
+        return redirect(url_for("admin_homepage_media"))
+
+    media = HomepageMedia(
+        media_type=media_type,
+        media_url=media_url,
+        public_id=public_id,
+        sort_order=position,
+        is_active=bool(request.form.get("is_active")),
+    )
+    if media_type == "hero_image":
+        mobile_file = request.files.get("mobile_media_file")
+        if mobile_file and mobile_file.filename:
+            mobile_url, mobile_public_id = save_homepage_media_file(mobile_file, media_type)
+            if not mobile_url:
+                flash("Please upload a valid mobile image file.", "error")
+                return redirect(url_for("admin_homepage_media"))
+            media.mobile_media_url = mobile_url
+            media.mobile_public_id = mobile_public_id
+    db.session.add(media)
+    db.session.commit()
+    flash(f"Extra {'hero slide' if media_type == 'hero_image' else 'crafted video'} added at position {position}.", "success")
+    return redirect(url_for("admin_homepage_media"))
+
+
+@app.route('/admin/homepage-media/move/<int:media_id>', methods=['POST'])
+@admin_required
+def admin_move_homepage_media(media_id):
+    media = HomepageMedia.query.get_or_404(media_id)
+    try:
+        new_position = int(request.form.get("position") or media.sort_order or 0)
+    except ValueError:
+        flash("Please enter a valid position.", "error")
+        return redirect(url_for("admin_homepage_media"))
+
+    minimum_position = 4 if media.media_type == "hero_image" else 5
+    if new_position < minimum_position:
+        flash(f"Extra media position must be {minimum_position} or higher.", "error")
+        return redirect(url_for("admin_homepage_media"))
+
+    existing = find_homepage_media_position(media.media_type, new_position)
+    if existing and existing.id != media.id:
+        flash(f"Position {new_position} already exists. Update that position instead.", "error")
+        return redirect(url_for("admin_homepage_media"))
+
+    media.sort_order = new_position
+    media.updated_at = datetime.utcnow()
+    db.session.commit()
+    flash("Position updated successfully.", "success")
+    return redirect(url_for("admin_homepage_media"))
+
+
+@app.route('/admin/homepage-media/add/<media_type>', methods=['GET', 'POST'])
+@admin_required
+def admin_add_homepage_media(media_type):
+    return redirect(url_for("admin_homepage_media"))
+
+
+@app.route('/admin/homepage-media/edit/<int:media_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_homepage_media(media_id):
+    return redirect(url_for("admin_homepage_media"))
+
+
+@app.route('/admin/homepage-media/toggle/<int:media_id>')
+@admin_required
+def admin_toggle_homepage_media(media_id):
+    media = HomepageMedia.query.get_or_404(media_id)
+    media.is_active = not media.is_active
+    media.updated_at = datetime.utcnow()
+    db.session.commit()
+    return redirect(url_for("admin_homepage_media"))
+
+
+@app.route('/admin/homepage-media/delete/<int:media_id>')
+@admin_required
+def admin_delete_homepage_media(media_id):
+    media = HomepageMedia.query.get_or_404(media_id)
+    db.session.delete(media)
+    db.session.commit()
+    flash("Homepage media deleted successfully.", "success")
+    return redirect(url_for("admin_homepage_media"))
+
 @app.route('/admin/orders/<int:id>')
 @admin_required
 def order_detail(id):
@@ -2319,6 +3036,9 @@ def create_order(user_id, cart_items, address_id):
         user_id=user_id,
         address_id=address_id,
         total_amount=total,
+        subtotal_amount=total,
+        discount_amount=0,
+        final_amount=total,
         status="Placed"
     )
 
@@ -2457,8 +3177,10 @@ def admin_settings():
 
 @app.route("/", methods=["GET", "POST"])
 def home():
+    hero_slides = build_homepage_slides("hero_image", FALLBACK_HERO_SLIDES)
+    style_videos = build_homepage_slides("style_video", FALLBACK_STYLE_VIDEOS)
 
-    return render_template("index.html")
+    return render_template("index.html", hero_slides=hero_slides, style_videos=style_videos)
 
 
 @app.route("/about")
@@ -3957,6 +4679,13 @@ def checkout_review():
                 "item_total": item_total
             })
 
+    coupon_code = current_coupon_code()
+    coupon_result = validate_coupon_for_user(user, coupon_code, total)
+    if not coupon_result["valid"]:
+        session.pop("coupon_code", None)
+        session.modified = True
+        coupon_result = validate_coupon_for_user(user, None, total)
+
     # ✅ Get user's addresses
     addresses = Address.query.filter_by(user_id=user.id).all()
     addresses_list = [{
@@ -3980,6 +4709,10 @@ def checkout_review():
         "cart": cart_details,
         "cart_count": len(cart_details),
         "total": total,
+        "subtotal_amount": coupon_result["subtotal_amount"],
+        "coupon_code": coupon_result["coupon_code"],
+        "discount_amount": coupon_result["discount_amount"],
+        "final_amount": coupon_result["final_amount"],
         "addresses": addresses_list,
         "addresses_count": len(addresses_list),
         "ready_for_checkout": len(addresses_list) > 0 and total > 0
@@ -4090,13 +4823,27 @@ def create_razorpay_order():
     if not cart_lines:
         return json_error("Cart is empty", 400)
 
+    requested_coupon_code = (data.get("coupon_code") or current_coupon_code()).strip().upper()
+    coupon_result = validate_coupon_for_user(user, requested_coupon_code, cart_total)
+    if not coupon_result["valid"]:
+        session.pop("coupon_code", None)
+        session.modified = True
+        return json_error(coupon_result["message"], 400)
+
+    final_total = coupon_result["final_amount"]
+    if coupon_result["coupon_code"]:
+        session["coupon_code"] = coupon_result["coupon_code"]
+    else:
+        session.pop("coupon_code", None)
+    session.modified = True
+
     try:
         client = get_razorpay_client()
     except RuntimeError as exc:
         app.logger.error("Razorpay setup error: %s", exc)
         return json_error(str(exc), 500)
 
-    existing_order = reusable_pending_order(user.id, selected_address.id, cart_total)
+    existing_order = reusable_pending_order(user.id, selected_address.id, final_total, coupon_result["coupon_code"])
 
     if existing_order and existing_order.razorpay_order_id and existing_order.razorpay_order_id.startswith("order_"):
       return jsonify({
@@ -4121,7 +4868,12 @@ def create_razorpay_order():
         }
     })
 
-    order, error = create_pending_order_from_cart(user, selected_address, payment_method="Razorpay")
+    order, error = create_pending_order_from_cart(
+        user,
+        selected_address,
+        payment_method="Razorpay",
+        coupon_code=coupon_result["coupon_code"]
+    )
     if error:
         return json_error(error, 400)
 
@@ -4960,6 +5712,8 @@ def api_delete_account():
 def blogs():
     blogs = Blog.query.filter_by(is_published=True)\
                       .order_by(
+                          Blog.blog_date.is_(None),
+                          Blog.blog_date.desc(),
                           Blog.created_at.is_(None),
                           Blog.created_at.desc(),
                           Blog.id.desc()
@@ -4994,6 +5748,74 @@ def privacy_policy():
 @app.route('/terms')
 def terms():
     return render_template("terms.html")
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    body = "\n".join([
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin",
+        "Disallow: /secure-admin-portal-9821",
+        "Sitemap: https://www.belt-purse.com/sitemap.xml",
+        ""
+    ])
+    response = make_response(body)
+    response.headers["Content-Type"] = "text/plain; charset=utf-8"
+    return response
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    base_url = "https://www.belt-purse.com"
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    pages = [
+        {"loc": f"{base_url}/", "changefreq": "weekly", "priority": "1.0", "lastmod": today},
+        {"loc": f"{base_url}/products-page", "changefreq": "weekly", "priority": "0.9", "lastmod": today},
+        {"loc": f"{base_url}/about", "changefreq": "monthly", "priority": "0.6", "lastmod": today},
+        {"loc": f"{base_url}/blogs", "changefreq": "weekly", "priority": "0.7", "lastmod": today},
+        {"loc": f"{base_url}/shipping-policy", "changefreq": "monthly", "priority": "0.4", "lastmod": today},
+        {"loc": f"{base_url}/return-policy", "changefreq": "monthly", "priority": "0.4", "lastmod": today},
+        {"loc": f"{base_url}/privacy-policy", "changefreq": "yearly", "priority": "0.3", "lastmod": today},
+        {"loc": f"{base_url}/terms", "changefreq": "yearly", "priority": "0.3", "lastmod": today},
+    ]
+
+    products = Product.query.filter(
+        db.or_(Product.is_archived == False, Product.is_archived.is_(None))
+    ).all()
+    for product in products:
+        pages.append({
+            "loc": f"{base_url}/product/{product.id}",
+            "changefreq": "weekly",
+            "priority": "0.8",
+            "lastmod": today
+        })
+
+    blogs = Blog.query.filter_by(is_published=True).all()
+    for blog in blogs:
+        if not blog.slug:
+            continue
+        pages.append({
+            "loc": f"{base_url}/blog/{blog.slug}",
+            "changefreq": "monthly",
+            "priority": "0.6",
+            "lastmod": (blog.updated_at or blog.created_at or datetime.utcnow()).strftime("%Y-%m-%d")
+        })
+
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>']
+    xml.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    for page in pages:
+        xml.append("  <url>")
+        xml.append(f"    <loc>{html.escape(page['loc'])}</loc>")
+        xml.append(f"    <lastmod>{page['lastmod']}</lastmod>")
+        xml.append(f"    <changefreq>{page['changefreq']}</changefreq>")
+        xml.append(f"    <priority>{page['priority']}</priority>")
+        xml.append("  </url>")
+    xml.append("</urlset>")
+
+    response = make_response("\n".join(xml))
+    response.headers["Content-Type"] = "application/xml; charset=utf-8"
+    return response
 
 # ================= LOGOUT =================
 @app.route('/logout')

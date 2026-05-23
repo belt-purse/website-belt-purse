@@ -14,35 +14,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <title>{% block title %}Belt Purse Store Indore | Premium Leather Belts & Accessories{% endblock %}</title>
+    <title>{% block title %}Belt Purse | Premium Belts & Fashion Accessories{% endblock %}</title>
 
-    <meta name="description" content="{% block meta_description %}Belt Purse Store in Indore offers premium leather belts, wallets & fashion accessories. Quality craftsmanship, affordable prices. Shop online or visit us in Madhya Pradesh.{% endblock %}">
-    <meta name="keywords" content="belt purse store, leather belts Indore, men's belts Madhya Pradesh, fashion accessories store, premium wallets India, belt shop near me, leather wallet, luxury wallet, women's purse, handbag">
-    <meta name="author" content="Belt Purse Store">
-    <meta name="robots" content="index, follow">
-    {% if canonical_url %}
-        <link rel="canonical" href="{{ canonical_url }}">
-    {% else %}
-        <link rel="canonical" href="{{ request.url_root.rstrip('/') }}{{ request.path }}">
-    {% endif %}
-    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
-    <meta property="og:title" content="{% block og_title %}Belt Purse Store Indore | Premium Leather Belts & Accessories{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}Premium belt purse store in Indore. Shop leather belts, wallets & fashion accessories with quality craftsmanship.{% endblock %}">
-    <meta property="og:url" content="{{ canonical_url or (request.url_root.rstrip('/') ~ request.path) }}">
-    <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}{% endblock %}">
-    <meta property="og:locale" content="en_IN">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{% block twitter_title %}Belt Purse Store Indore | Premium Leather Belts{% endblock %}">
-    <meta name="twitter:description" content="{% block twitter_description %}Premium belt purse store in Indore. Shop leather belts, wallets & fashion accessories.{% endblock %}">
-    <meta name="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}{% endblock %}">
+    <meta name="description" content="Belt Purse offers premium leather wallets, stylish belts,men's belts, purses and fashion accessories with quality craftsmanship. Shop luxury accessories online in India.">
+    <meta name="keywords" content="belt purse,belt purse shop,leather wallet, luxury wallet, men's wallet, women's purse, leather belt, belt , handbag, fashion accessories, premium wallet, online accessories store India,belt for men,best belts for men,bestbelt brands for men,leather belt,belt purse shop,belt purse for men,belt purse combo,belt purse shop near me,formal belt for men,formal belt for men black,formal belt">
+    <meta name="author" content="Belt Purse">
 
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon_logo.jpeg') }}">
     <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/favicon_logo.jpeg') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon_logo.jpeg') }}">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/gotham" rel="stylesheet">
 <style>
     html, body {
     width: 100%;
@@ -55,7 +40,7 @@
 body {
     margin: 0;
      max-width: 100%;
-    font-family: 'Jost', sans-serif !important;
+    font-family: 'Gotham', sans-serif;
     
 }
 
@@ -253,7 +238,7 @@ body {
         transition: all 0.3s ease;
         position: relative;
         font-weight: 400;
-        font-family: 'Jost', sans-serif !important;
+        font-family: 'Gotham', sans-serif;
     }
 
     .nav-center a:hover {
@@ -2118,62 +2103,11 @@ body::before {
         display: block !important;
     }
 }
-
-/* ===== CLIENT UPDATE: Global Jost font + soft grey base ===== */
-:root {
-    --client-bg: rgb(239, 239, 239);
-}
-body,
-body *:not(i):not(.fa):not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.fa-light):not(.fa-thin) {
-    font-family: 'Jost', sans-serif !important;
-}
-body {
-    background: var(--client-bg) !important;
-}
-
     </style>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Store",
-      "name": "Belt Purse Store",
-      "alternateName": "Belt Purse",
-      "description": "Premium belt purse store in Indore offering leather wallets, stylish belts, purses and fashion accessories with quality craftsmanship.",
-      "url": "https://www.belt-purse.com",
-      "logo": "{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}",
-      "image": "{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Indore",
-        "addressRegion": "Madhya Pradesh",
-        "addressCountry": "IN"
-      },
-      "geo": {
-        "@type": "GeoCoordinates",
-        "latitude": "22.7196",
-        "longitude": "75.8577"
-      },
-      "openingHoursSpecification": [
-        {
-          "@type": "OpeningHoursSpecification",
-          "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-          "opens": "10:00",
-          "closes": "20:00"
-        }
-      ],
-      "priceRange": "INR",
-      "paymentAccepted": ["Cash", "Credit Card", "UPI", "Online Payment"],
-      "currenciesAccepted": "INR",
-      "areaServed": {
-        "@type": "City",
-        "name": "Indore"
-      }
-    }
-    </script>
-    {% block extra_head %}{% endblock %}
+
 </head>
 
-<body class="{% if request.path == '/' %}home-page update-home-page{% else %}inner-page{% endif %}">
+<body>
 
 
 
@@ -2284,12 +2218,10 @@ body {
         <!-- Wishlist hidden temporarily - keep code for future use
         <a href="/wishlist" class="mobile-menu-only">Wishlist</a>
         -->
-        <a href="/products-page?category=belt">Belts</a>
-        <a href="/products-page?category=wallet">Wallets</a>
         <a href="/cart" class="mobile-menu-only">Cart</a>
         <a href="/blogs">Blogs</a>
         <a href="/about">About Us</a>
-
+        <a href="/#contact">Contact</a>
         <!-- ✅ FIX - login check karo pehle -->
 <a href="#" class="mobile-account-link" onclick="handleAccountClick(event)">Account / Login</a>
     </div>
@@ -2360,57 +2292,62 @@ body {
 </header>
 
 {% block content %}{% endblock %}
-<footer class="site-footer premium-wallet-footer">
-  <div class="footer-container premium-footer-grid">
+<footer class="site-footer">
+  <div class="footer-container">
 
-    <div class="footer-col brand-info footer-about">
-      <h3>About Us</h3>
+    <!-- BRAND -->
+    <div class="footer-col brand-info">
+      <h3>BeltPurse</h3>
       <p>
-        Premium belts and wallets crafted for everyday style, comfort, and long-lasting quality.
+        Premium belts crafted for quality, comfort, and timeless style.
       </p>
-      <div class="social-icons">
-        <a href="https://www.instagram.com/beltpurse.comm?igsh=MTI5cGlmOTVoZGN4cA==" target="_blank" class="insta" aria-label="Instagram">
-          <i class="fa-brands fa-instagram"></i>
-        </a>
-        <a href="https://wa.me/917000747936" target="_blank" class="whatsapp" aria-label="WhatsApp">
-          <i class="fa-brands fa-whatsapp"></i>
-        </a>
-      </div>
+     <div class="social-icons">
+    <!-- Instagram -->
+    <a href="https://www.instagram.com/beltpurse.comm?igsh=MTI5cGlmOTVoZGN4cA==" target="_blank" class="insta">
+        <i class="fa-brands fa-instagram"></i>
+    </a>
+
+    <!-- WhatsApp -->
+    <a href="https://wa.me/917000747936" target="_blank" class="whatsapp">
+        <i class="fa-brands fa-whatsapp"></i>
+    </a>
+</div>
     </div>
 
-    <div class="footer-col footer-information">
-      <h4>Information</h4>
+    <!-- COMPANY -->
+    <div class="footer-col">
+      <h4>Company</h4>
       <ul>
-        <li><a href="/products-page">Shop</a></li>
+        <li><a href="/">Home</a></li>
         <li><a href="/blogs">Blogs</a></li>
-        <li><a href="/about">About Us</a></li>
-        <li><a href="/#contact">Contact Us</a></li>
+        <li><a href="/about">About</a></li>
+        <li><a href="/#contact">Contact</a></li>
       </ul>
     </div>
 
-    <div class="footer-col footer-support">
-      <h4>Customer Care</h4>
+    <!-- SUPPORT -->
+    <div class="footer-col">
+      <h4>Support</h4>
       <ul>
-        <li><a href="/shipping-policy">Shipping Policy</a></li>
-        <li><a href="/return-policy">Return Policy</a></li>
-        <li><a href="/privacy-policy">Privacy Policy</a></li>
-        <li><a href="/cart">Cart</a></li>
+       <li><a href="/#faq">FAQs</a></li>
+        <li><a href="/shipping-policy">Shipping</a></li>
+        <li><a href="/return-policy">Returns</a></li>
+        <li><a href="/privacy-policy">Privacy</a></li>
       </ul>
     </div>
 
-    <div class="footer-col contact-info footer-newsletter">
-      <h4>Newsletter</h4>
-      <p>Get updates about new arrivals, premium collections, and offers.</p>
-      <form class="footer-newsletter-form" onsubmit="event.preventDefault(); alert('Thank you for subscribing!');">
-        <input type="email" placeholder="Enter your email" required>
-        <button type="submit">Subscribe</button>
-      </form>
-      <p class="footer-contact-line"><i class="fa-solid fa-phone"></i> +91 7000747936</p>
-      <p class="footer-contact-line"><i class="fa-solid fa-envelope"></i> beltpurse.com@gmail.com</p>
+    <!-- CONTACT -->
+    <div class="footer-col contact-info">
+      <h4>Contact</h4>
+     <p><i class="fa-solid fa-phone"></i> +91 7000747936</p>
+
+<p><i class="fa-solid fa-envelope"></i> beltpurse.com@gmail.com</p>
+<p><i class="fa-solid fa-location-dot"></i> India</p>
     </div>
 
   </div>
 
+  <!-- BOTTOM -->
   <div class="footer-bottom">
     <p>© 2026 BeltPurse. All rights reserved.</p>
   </div>
@@ -2710,11 +2647,8 @@ button,
 
         // Add appropriate class based on page type
         if (isHomepage) {
-            navbar.classList.remove('not-homepage');
-            document.body.classList.remove('has-fixed-navbar');
             navbar.classList.add('is-homepage');
         } else {
-            navbar.classList.remove('is-homepage');
             navbar.classList.add('not-homepage');
             document.body.classList.add('has-fixed-navbar');
         }
@@ -2891,363 +2825,5 @@ window.addEventListener("user-login", () => {
 
 </script>
 <script src="/static/js/script.js"></script>
-{% block page_scripts %}{% endblock %}
-
-<style>
-/* ===== CLIENT UPDATE: Global green footer ===== */
-.premium-wallet-footer {
-    background: linear-gradient(135deg, #0A5C56, #083E3A) !important;
-    color: #ffffff !important;
-    border-top: 1px solid rgba(255,255,255,0.12);
-    padding: 54px 5% 18px !important;
-}
-.premium-wallet-footer .premium-footer-grid {
-    max-width: 1240px;
-    display: grid !important;
-    grid-template-columns: 1.3fr 0.8fr 0.9fr 1.25fr;
-    gap: 34px;
-    align-items: start;
-}
-.premium-wallet-footer .footer-col h3,
-.premium-wallet-footer .footer-col h4 {
-    color: #ffffff !important;
-    font-family: 'Jost', sans-serif !important;
-    font-weight: 400 !important;
-    letter-spacing: 0.02em;
-    margin-bottom: 14px;
-}
-.premium-wallet-footer .footer-col h3::after,
-.premium-wallet-footer .footer-col h4::after {
-    display: none !important;
-}
-.premium-wallet-footer .footer-col p,
-.premium-wallet-footer .footer-col a,
-.premium-wallet-footer .footer-contact-line,
-.premium-wallet-footer .footer-bottom p {
-    color: rgba(255,255,255,0.86) !important;
-    font-family: 'Jost', sans-serif !important;
-}
-.premium-wallet-footer .footer-col ul li {
-    margin-bottom: 9px;
-}
-.premium-wallet-footer .footer-col ul li a:hover {
-    color: #ffffff !important;
-    padding-left: 0 !important;
-}
-.footer-newsletter-form {
-    display: flex;
-    gap: 8px;
-    margin: 14px 0 18px;
-}
-.footer-newsletter-form input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    background: #fff;
-    color: #111111;
-    padding: 12px 14px;
-    border-radius: 0;
-    outline: none;
-    font-family: 'Jost', sans-serif !important;
-}
-.footer-newsletter-form button {
-    border: none;
-    background: #ffffff;
-    color: #111111;
-    padding: 12px 18px;
-    cursor: pointer;
-    font-family: 'Jost', sans-serif !important;
-    font-weight: 400;
-}
-.premium-wallet-footer .social-icons a {
-    border-radius: 50%;
-    color: #ffffff !important;
-}
-.premium-wallet-footer .footer-bottom {
-    border-top: 1px solid rgba(255,255,255,0.18) !important;
-    margin-top: 34px !important;
-}
-@media (max-width: 768px) {
-    .premium-wallet-footer {
-        padding: 34px 16px 14px !important;
-    }
-    .premium-wallet-footer .premium-footer-grid {
-        grid-template-columns: 1fr 1fr !important;
-        gap: 22px 16px !important;
-    }
-    .premium-wallet-footer .footer-about,
-    .premium-wallet-footer .footer-newsletter {
-        grid-column: span 2;
-    }
-    .footer-newsletter-form {
-        flex-direction: column;
-    }
-    .footer-newsletter-form button {
-        width: 100%;
-    }
-}
-
-html,
-body,
-body *:not(i):not(.fa):not(.fa-solid):not(.fa-regular):not(.fa-brands) {
-    font-family: 'Jost', sans-serif !important;
-}
-
-body {
-    background: rgb(239, 239, 239) !important;
-}
-
-main,
-.main,
-.page-wrapper,
-.content-wrapper,
-.products-page,
-.product-page,
-.blog-page,
-.blogs-page,
-.about-page,
-.contact-page,
-.cart-page,
-.wishlist-page,
-.checkout-page,
-.login-page,
-.register-page,
-section {
-    background-color: rgb(239, 239, 239) !important;
-}
-
-.site-footer,
-.footer,
-.site-footer.premium-wallet-footer,
-.navbar.scrolled,
-.navbar.not-homepage {
-    background: linear-gradient(135deg, #0A5C56, #083E3A) !important;
-}
-
-.update-home-page .site-footer,
-.update-home-page .footer,
-.update-home-page .site-footer.premium-wallet-footer {
-    background: linear-gradient(135deg, #0A5C56, #083E3A) !important;
-    color: #ffffff !important;
-}
-
-.update-home-page .premium-wallet-footer .footer-col h3,
-.update-home-page .premium-wallet-footer .footer-col h4 {
-    color: #ffffff !important;
-}
-
-.update-home-page .premium-wallet-footer .footer-col p,
-.update-home-page .premium-wallet-footer .footer-col a,
-.update-home-page .premium-wallet-footer .footer-bottom p,
-.update-home-page .premium-wallet-footer .footer-contact-line {
-    color: rgba(255,255,255,0.82) !important;
-}
-
-.update-home-page .premium-wallet-footer .footer-col a:hover {
-    color: #ffffff !important;
-}
-
-.update-home-page .premium-wallet-footer .footer-bottom {
-    border-top-color: rgba(255,255,255,0.16) !important;
-}
-
-.update-home-page .footer-newsletter-form input {
-    border-color: rgba(255,255,255,0.28) !important;
-}
-
-.update-home-page .footer-newsletter-form button {
-    background: #ffffff !important;
-    border-color: #ffffff !important;
-    color: #083E3A !important;
-}
-
-.product-card,
-.prd-card,
-.blog-card,
-.service-card,
-.card:not(.icon-box):not(.premium-icon),
-.form-card,
-.contact-form,
-.product-image-wrapper,
-.prd-img-wrap,
-.card-image-wrap,
-.blog-image,
-.portrait-video-card,
-.portrait-video-card video,
-.auto-slide-img,
-.auto-slide-img img,
-input,
-textarea,
-select,
-button:not(.icon-box):not(.premium-icon):not(.mobile-search-toggle):not(.wishlist-btn),
-.btn:not(.icon-box):not(.premium-icon):not(.mobile-search-toggle):not(.wishlist-btn),
-img:not(.avatar):not(.avatar-img):not(.premium-avatar) {
-    border-radius: 0 !important;
-}
-
-.color-circle,
-.color-dot,
-.wishlist-color-swatch,
-.premium-icon,
-.icon-box,
-.avatar,
-.avatar-img,
-.premium-avatar,
-.social-icons a,
-.wishlist-btn,
-.mobile-search-toggle,
-.desktop-count-icon,
-.navbar .desktop-count-icon,
-.nav-right .premium-icon {
-    border-radius: 50% !important;
-}
-
-.badge,
-.discount-badge {
-    border-radius: 999px !important;
-}
-
-/* ===== REMOVE ALL VISUAL HOVER EFFECTS ===== */
-.product-card,
-.product-card:hover,
-.prd-card,
-.prd-card:hover,
-.related-card,
-.related-card:hover,
-.blog-card,
-.blog-card:hover,
-.featured-blog,
-.featured-blog:hover,
-.service-card,
-.service-card:hover,
-.card,
-.card:hover,
-.wishlist-card,
-.wishlist-card:hover,
-.lux-card,
-.lux-card:hover,
-.cat-card,
-.cat-card:hover,
-.cat-row,
-.cat-row:hover,
-.video-card,
-.video-card:hover,
-.portrait-video-card,
-.portrait-video-card:hover,
-.wallet-raw-card,
-.wallet-raw-card:hover,
-.material-grid div,
-.material-grid div:hover,
-.why-grid div,
-.why-grid div:hover,
-.address-card,
-.address-card:hover,
-.order-card,
-.order-card:hover,
-.payment-card,
-.payment-card:hover,
-.ticket-card,
-.ticket-card:hover,
-.help-card,
-.help-card:hover {
-    transform: none !important;
-    transition: none !important;
-    box-shadow: none !important;
-}
-
-.product-card img,
-.product-card:hover img,
-.prd-card img,
-.prd-card:hover img,
-.related-card img,
-.related-card:hover img,
-.blog-card img,
-.blog-card:hover img,
-.featured-blog img,
-.featured-blog:hover img,
-.service-card img,
-.service-card:hover img,
-.card img,
-.card:hover img,
-.wishlist-card img,
-.wishlist-card:hover img,
-.product-image-wrapper img,
-.product-image-wrapper:hover img,
-.product-img,
-.product-img:hover,
-.prd-img,
-.prd-img:hover,
-.video-card video,
-.video-card:hover video,
-.portrait-video-card video,
-.portrait-video-card:hover video,
-.wallet-raw-card img,
-.wallet-raw-card:hover img,
-.auto-slide-img img,
-.auto-slide-img:hover img,
-.auto-image-slider-section:hover .auto-image-slider-track {
-    transform: none !important;
-    transition: none !important;
-    scale: 1 !important;
-}
-
-button,
-button:hover,
-.btn,
-.btn:hover,
-.hero-btn,
-.hero-btn:hover,
-.featured-explore-btn,
-.featured-explore-btn:hover,
-.featured-btn,
-.featured-btn:hover,
-.select-btn,
-.select-btn:hover,
-.empty-cart-btn,
-.empty-cart-btn:hover,
-.primary-btn,
-.primary-btn:hover,
-.secondary-btn,
-.secondary-btn:hover,
-.tiny-btn,
-.tiny-btn:hover,
-.addCartBtn,
-.addCartBtn:hover,
-.removeBtn,
-.removeBtn:hover,
-.wishBtn,
-.wishBtn:hover,
-.icon-btn,
-.icon-btn:hover,
-a.button,
-a.button:hover {
-    transform: none !important;
-    transition: none !important;
-    box-shadow: none !important;
-}
-
-a:hover,
-.premium-icon:hover,
-.social-icons a:hover,
-.avatar-img:hover,
-.hamburger:hover,
-#closeBtn:hover,
-.wishlist-heart:hover,
-.desktop-search-toggle:hover,
-.desktop-search-close:hover,
-.mobile-search-card .search-close:hover {
-    transform: none !important;
-}
-
-.product-image-wrapper::after,
-.product-image-wrapper:hover::after,
-.blog-overlay,
-.blog-card:hover .blog-overlay {
-    opacity: inherit !important;
-    transform: none !important;
-    transition: none !important;
-}
-</style>
-
 </body>
 </html>

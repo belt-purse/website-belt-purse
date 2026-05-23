@@ -118,6 +118,54 @@
         align-items: start;
     }
 
+    .about-approach-section {
+        display: grid;
+        grid-template-columns: 0.9fr 1.4fr;
+        gap: 70px;
+        align-items: start;
+        max-width: 1120px;
+        margin: 80px auto 0;
+    }
+
+    .about-approach-section .section-heading,
+    .about-approach-left {
+        text-align: left;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .about-approach-left span {
+        display: block;
+        font-size: 12px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #0A5C56;
+        margin-bottom: 14px;
+        font-weight: 400;
+    }
+
+    .about-approach-left h2 {
+        font-family: 'Jost', sans-serif !important;
+        font-size: 44px !important;
+        line-height: 1.12 !important;
+        font-weight: 400 !important;
+        margin: 0 !important;
+        color: #111;
+    }
+
+    .about-approach-text {
+        max-width: 700px;
+        padding-top: 4px;
+    }
+
+    .about-approach-text p {
+        font-size: 17px;
+        line-height: 1.8;
+        color: #222;
+        margin: 0 0 18px;
+        font-weight: 400;
+    }
+
     .about-cta {
         text-align: center;
     }
@@ -153,6 +201,22 @@
         .about-split {
             grid-template-columns: 1fr;
             gap: 14px;
+        }
+
+        .about-approach-section {
+            grid-template-columns: 1fr;
+            gap: 22px;
+            margin-top: 48px;
+        }
+
+        .about-approach-left h2 {
+            font-size: 32px !important;
+            line-height: 1.18 !important;
+        }
+
+        .about-approach-text p {
+            font-size: 15px;
+            line-height: 1.7;
         }
 
         .about-grid {
@@ -231,36 +295,36 @@
                     <p>Experience in belts and accessories since 1992.</p>
                 </div>
                 <div class="about-card">
+                    <span class="number">1 Lakh+</span>
+                    <h3>Happy Customers</h3>
+                    <p>Trusted by thousands of customers for everyday belts, wallets, and accessories.</p>
+                </div>
+                <div class="about-card">
                     <span class="number">01</span>
                     <h3>Quality First</h3>
-                    <p>Products chosen for finish, comfort, and durability.</p>
+                    <p>Products chosen for finish, comfort, durability, and long-term daily use.</p>
                 </div>
                 <div class="about-card">
                     <span class="number">02</span>
-                    <h3>Practical Pricing</h3>
-                    <p>Premium-looking accessories made accessible.</p>
-                </div>
-                <div class="about-card">
-                    <span class="number">03</span>
                     <h3>Bulk Ready</h3>
-                    <p>Suitable options for wholesale and corporate orders.</p>
+                    <p>Suitable options for wholesale, corporate gifting, and business orders.</p>
                 </div>
             </div>
         </div>
     </section>
 
     <section class="about-section soft">
-        <div class="about-wrap about-split">
-            <div>
-                <span class="about-label">Our Approach</span>
+        <div class="about-wrap about-approach-section">
+            <div class="about-approach-left">
+                <span>OUR APPROACH</span>
                 <h2>Designed for Everyday Confidence</h2>
             </div>
-            <div>
-                <p class="about-text">
-                    We believe accessories should do more than complete an outfit. They should
-                    feel easy to use, match different styles, and give confidence every day.
-                    That is why our collection focuses on timeless designs, dependable hardware,
-                    comfortable materials, and customer-friendly service.
+            <div class="about-approach-text">
+                <p>
+                    We believe accessories should do more than complete an outfit. They should feel easy to use, match different styles, and give confidence every day. That is why our collection focuses on timeless designs, dependable hardware, comfortable materials, and customer-friendly service.
+                </p>
+                <p>
+                    From daily office wear to gifting and bulk requirements, we keep every product practical, durable, and value-focused. Our aim is to offer belts, wallets, and accessories that look premium, feel comfortable, and stay useful for a long time.
                 </p>
             </div>
         </div>

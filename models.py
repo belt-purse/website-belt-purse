@@ -190,6 +190,10 @@ class Order(db.Model):
     address_id = db.Column(db.Integer, db.ForeignKey('addresses.id'))
 
     total_amount = db.Column(db.Float)
+    subtotal_amount = db.Column(db.Float)
+    discount_amount = db.Column(db.Float, default=0)
+    final_amount = db.Column(db.Float)
+    coupon_code = db.Column(db.String(50))
     status = db.Column(db.String(50), default='Pending')
     order_status = db.Column(db.String(50), default='Pending')
     payment_status = db.Column(db.String(50), default='Pending')
@@ -204,6 +208,62 @@ class Order(db.Model):
     razorpay_signature = db.Column(db.String(255), nullable=True)
     paid_at = db.Column(db.DateTime, nullable=True)
     items = db.relationship('OrderItem', backref='order', lazy=True)
+
+
+class Coupon(db.Model):
+    __tablename__ = 'coupons'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False)
+    title = db.Column(db.String(255))
+    discount_type = db.Column(db.String(20), default="fixed")
+    discount_value = db.Column(db.Float, nullable=False, default=0)
+    min_order_amount = db.Column(db.Float, nullable=True)
+    max_discount_amount = db.Column(db.Float, nullable=True)
+    valid_from = db.Column(db.Date, nullable=True)
+    valid_until = db.Column(db.Date, nullable=True)
+    usage_limit = db.Column(db.Integer, nullable=True)
+    used_count = db.Column(db.Integer, default=0)
+    per_user_limit = db.Column(db.Integer, default=1)
+    first_order_only = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CouponUsage(db.Model):
+    __tablename__ = 'coupon_usage'
+
+    id = db.Column(db.Integer, primary_key=True)
+    coupon_id = db.Column(db.Integer, db.ForeignKey('coupons.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
+    used_at = db.Column(db.DateTime, default=datetime.utcnow)
+    discount_amount = db.Column(db.Float, nullable=False, default=0)
+
+    coupon = db.relationship('Coupon', backref='usage_entries')
+    user = db.relationship('User')
+    order = db.relationship('Order')
+
+
+class HomepageMedia(db.Model):
+    __tablename__ = 'homepage_media'
+
+    id = db.Column(db.Integer, primary_key=True)
+    media_type = db.Column(db.String(30), nullable=False)
+    title = db.Column(db.String(255))
+    subtitle = db.Column(db.String(500))
+    button_text = db.Column(db.String(100))
+    button_link = db.Column(db.String(500))
+    media_url = db.Column(db.String(500), nullable=False)
+    mobile_media_url = db.Column(db.String(500))
+    public_id = db.Column(db.String(255))
+    mobile_public_id = db.Column(db.String(255))
+    alt_text = db.Column(db.String(255))
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class OrderItem(db.Model):
@@ -259,6 +319,7 @@ class Blog(db.Model):
 
     tags = db.relationship('Tag', secondary=blog_tags, backref='blogs')
 
+    blog_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime)
     updated_at = db.Column(db.DateTime)
     is_published = db.Column(db.Boolean, default=True)

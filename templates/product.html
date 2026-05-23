@@ -1,12 +1,88 @@
 {% extends "base.html" %}
 
-{% block title %}{{ product.name }} | BeltPurse{% endblock %}
+{% block title %}{{ product.name }} | Belt Purse Store Indore{% endblock %}
+{% block meta_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store Indore')) | striptags | truncate(155, True) }}{% endblock %}
+{% block og_type %}product{% endblock %}
+{% block og_title %}{{ product.name }} | Belt Purse Store Indore{% endblock %}
+{% block og_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store Indore')) | striptags | truncate(155, True) }}{% endblock %}
+{% if images|length > 0 %}
+    {% set primary_product_image = images[0].image_url %}
+{% else %}
+    {% set primary_product_image = url_for('static', filename='images/default.png') %}
+{% endif %}
+{% if primary_product_image.startswith('http') %}
+    {% set primary_product_image_url = primary_product_image %}
+{% else %}
+    {% set primary_product_image_url = request.url_root.rstrip('/') ~ primary_product_image %}
+{% endif %}
+{% block og_image %}{{ primary_product_image_url }}{% endblock %}
+{% block twitter_title %}{{ product.name }} | Belt Purse Store Indore{% endblock %}
+{% block twitter_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store Indore')) | striptags | truncate(155, True) }}{% endblock %}
+{% block twitter_image %}{{ primary_product_image_url }}{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": {{ product.name|tojson }},
+  "image": [{{ primary_product_image_url|tojson }}],
+  "description": {{ (product.description or product.name)|striptags|tojson }},
+  "sku": {{ ((product.product_type or 'belt')|title ~ '-' ~ product.id)|tojson }},
+  "brand": {
+    "@type": "Brand",
+    "name": "Belt Purse"
+  },
+  "offers": {
+    "@type": "Offer",
+    "url": {{ request.url|tojson }},
+    "priceCurrency": "INR",
+    "price": {{ (product.price or 0)|string|tojson }},
+    "availability": "https://schema.org/InStock",
+    "seller": {
+      "@type": "Store",
+      "name": "Belt Purse Store Indore"
+    }
+  }{% if product.rating or reviews|length > 0 %},
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": {{ (product.rating or 5.0)|string|tojson }},
+    "reviewCount": {{ (reviews|length if reviews|length > 0 else 1)|string|tojson }}
+  }{% endif %}
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": {{ request.url_root.rstrip('/')|tojson }}
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Products",
+      "item": {{ (request.url_root.rstrip('/') ~ url_for('products_page'))|tojson }}
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": {{ product.name|tojson }},
+      "item": {{ request.url|tojson }}
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
-<link href="https://fonts.cdnfonts.com/css/gotham" rel="stylesheet">
 <style>
 body {
-    font-family: 'Gotham', sans-serif;
+    font-family: 'Jost', sans-serif !important;
 }
 :root {
     --btn-gradient: linear-gradient(135deg, #0A5C56, #083E3A);
@@ -1140,7 +1216,7 @@ body {
 }
 
 .product-title-row h1 {
-    font-family: "Gotham", "Montserrat", Arial, sans-serif !important;
+    font-family: 'Jost', sans-serif !important;
     font-size: clamp(24px, 2vw, 34px);
     line-height: 1.12;
     letter-spacing: 0.8px;
@@ -1441,7 +1517,7 @@ body {
 
 .size-chart-dialog h2 {
     margin: 0 0 18px;
-    font-family: "Gotham", "Montserrat", Arial, sans-serif !important;
+    font-family: 'Jost', sans-serif !important;
     font-size: 24px;
     letter-spacing: 0.6px;
 }
@@ -2305,6 +2381,261 @@ body .lightbox-overlay .product-lightbox-next:active {
   }
 }
 </style>
+<style>
+/* Compact premium product detail alignment */
+.product-detail-page .product-hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.05fr) minmax(380px, 0.95fr) !important;
+    gap: 64px !important;
+    align-items: start !important;
+    max-width: 1540px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.product-detail-page .product-gallery,
+.product-detail-page .product-info-panel {
+    align-self: start !important;
+}
+
+.product-detail-page .product-info-panel {
+    padding-top: 4px !important;
+    gap: 0 !important;
+    max-width: 560px !important;
+}
+
+.product-detail-page .product-title-row {
+    margin: 0 0 14px !important;
+}
+
+.product-detail-page .product-title-row h1 {
+    font-size: 28px !important;
+    line-height: 1.2 !important;
+    font-weight: 500 !important;
+    letter-spacing: 1px !important;
+    margin: 0 !important;
+    text-transform: uppercase;
+}
+
+.product-detail-page .product-price-row {
+    display: flex !important;
+    align-items: baseline !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    margin: 0 0 8px !important;
+}
+
+.product-detail-page .product-price-row .price-old {
+    order: 1 !important;
+    font-size: 16px !important;
+    color: #666 !important;
+    text-decoration: line-through !important;
+}
+
+.product-detail-page .product-price-row .price-new {
+    order: 2 !important;
+    font-size: 24px !important;
+    color: #111 !important;
+    font-weight: 500 !important;
+}
+
+.product-detail-page .product-price-row .discount-badge {
+    order: 3 !important;
+    background: transparent !important;
+    color: #d71920 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: 15px !important;
+    font-weight: 400 !important;
+}
+
+.product-detail-page .tax-note {
+    color: #666 !important;
+    font-size: 13px !important;
+    font-style: italic !important;
+    margin: 0 0 18px !important;
+}
+
+.product-detail-page .product-offers-box {
+    margin: 0 0 20px !important;
+    gap: 8px !important;
+}
+
+.product-detail-page .product-offer-row {
+    padding: 12px 14px !important;
+    border-radius: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+.product-detail-page .product-info-panel > .product-properties:last-of-type {
+    order: 4 !important;
+    margin: 0 0 18px !important;
+}
+
+.product-detail-page .product-info-panel > .product-properties:last-of-type .property-card {
+    margin: 0 !important;
+    padding: 0 0 16px !important;
+    border-top: 0 !important;
+    border-bottom: 1px solid rgba(0,0,0,0.08) !important;
+}
+
+.product-detail-page .product-info-panel > .product-properties:last-of-type .property-card + .property-card {
+    padding-top: 16px !important;
+}
+
+.product-detail-page .product-info-panel > .product-properties:last-of-type .property-card strong {
+    margin: 0 0 10px !important;
+    font-size: 15px !important;
+}
+
+.product-detail-page .product-actions {
+    order: 5 !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 14px !important;
+    margin: 0 0 20px !important;
+}
+
+.product-detail-page .product-actions .add-cart-btn {
+    order: 1 !important;
+}
+
+.product-detail-page .product-actions .btn-flat {
+    order: 2 !important;
+}
+
+.product-detail-page .product-actions .btn {
+    min-height: 48px !important;
+    height: 48px !important;
+    border-radius: 0 !important;
+    padding: 0 18px !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.product-detail-page .product-feature-row {
+    order: 6 !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    margin: 0 0 22px !important;
+    padding: 16px 0 !important;
+    background: transparent !important;
+    border-top: 1px solid rgba(0,0,0,0.08) !important;
+    border-bottom: 1px solid rgba(0,0,0,0.08) !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+}
+
+.product-detail-page .product-feature-item {
+    min-height: 64px !important;
+    padding: 0 6px !important;
+    background: transparent !important;
+    color: #111 !important;
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+    font-weight: 400 !important;
+    gap: 7px !important;
+}
+
+.product-detail-page .product-feature-item i {
+    width: 30px !important;
+    height: 30px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    background: rgba(10, 92, 86, 0.08) !important;
+    color: #0A5C56 !important;
+    font-size: 14px !important;
+}
+
+.product-detail-page .color-list,
+.product-detail-page .size-list {
+    margin-top: 0 !important;
+}
+
+.product-detail-page hr {
+    margin: 18px 0 !important;
+}
+
+.product-detail-page .color-circle,
+.product-detail-page .color-dot,
+.product-detail-page .benefit-icon,
+.product-detail-page .product-benefit-icon,
+.product-detail-page .product-service-icon,
+.product-detail-page .product-feature-item i,
+.product-detail-page .wishlist-btn,
+.product-detail-page .wishlist-heart,
+.product-detail-page .premium-icon,
+.product-detail-page .icon-box,
+.product-detail-page .avatar,
+.product-detail-page .avatar-img,
+.product-detail-page .badge {
+    border-radius: 50% !important;
+}
+
+.product-detail-page .product-card,
+.product-detail-page .product-image-wrapper,
+.product-detail-page .product-gallery-main,
+.product-detail-page .product-gallery-thumbs button,
+.product-detail-page .product-detail-image,
+.product-detail-page .product-offer-row,
+.product-detail-page .size-option,
+.product-detail-page .size-chip,
+.product-detail-page .product-action-btn,
+.product-detail-page .btn,
+.product-detail-page input,
+.product-detail-page select,
+.product-detail-page textarea {
+    border-radius: 0 !important;
+}
+
+@media (max-width: 991px) {
+    .product-detail-page .product-hero {
+        grid-template-columns: 1fr !important;
+        gap: 28px !important;
+    }
+
+    .product-detail-page .product-info-panel {
+        max-width: none !important;
+        padding-top: 0 !important;
+    }
+
+    .product-detail-page .product-actions {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+
+    .product-detail-page .product-feature-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        padding: 14px 0 !important;
+    }
+
+    .product-detail-page .product-feature-item {
+        font-size: 12px !important;
+    }
+
+    .product-detail-page .product-title-row h1 {
+        font-size: 24px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .product-detail-page .product-actions {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+        margin-bottom: 18px !important;
+    }
+
+    .mobile-sticky-actions {
+        display: none !important;
+    }
+}
+</style>
 <script id="images-data" type="application/json">
     {{ images | tojson }}
 </script>
@@ -2532,7 +2863,7 @@ function setGalleryImage(src, isVideo) {
             </video>
         `;
     } else {
-        main.innerHTML = `<img src="${src}" alt="Product image" draggable="false">`;
+        main.innerHTML = `<img src="${src}" alt="{{ product.name }} product image" draggable="false">`;
     }
 }
 
@@ -2641,7 +2972,7 @@ function renderGalleryThumbs() {
         } else {
             thumbs.innerHTML += `
                 <button type="button" onclick="goToGallerySlide(${index})">
-                    <img src="${item.src}" alt="Product thumbnail">
+                    <img src="${item.src}" alt="{{ product.name }} product thumbnail">
                 </button>
             `;
         }
@@ -2758,7 +3089,7 @@ function renderLightboxMedia() {
             </video>
         `;
     } else {
-        lightboxMedia.innerHTML = `<img src="${item.src}" alt="Product preview">`;
+        lightboxMedia.innerHTML = `<img src="${item.src}" alt="{{ product.name }} product preview">`;
     }
 }
 
@@ -3154,7 +3485,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <!-- 🔥 ONLY THIS WILL CHANGE -->
 <div id="detailMainMedia">
     {% if images|length > 0 %}
-        <img id="mainImage" src="{{ images[0].image_url }}" draggable="false">
+        <img id="mainImage" src="{{ images[0].image_url }}" alt="{{ product.name }} - premium {{ product.product_type or 'accessory' }} from Belt Purse Store Indore" draggable="false">
     {% elif videos|length > 0 %}
         <video controls src="{{ videos[0].video_url }}" draggable="false"></video>
     {% endif %}
@@ -3166,7 +3497,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     {% for img in images %} 
         <button type="button" onclick="goToGallerySlide({{ loop.index0 }})">
-            <img src="{{ img.image_url }}">
+            <img src="{{ img.image_url }}" alt="{{ product.name }} thumbnail {{ loop.index }} - Belt Purse Store Indore">
         </button>
     {% endfor %}
 
@@ -3220,6 +3551,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 {% endif %}
             </div>
             <div class="tax-note">Incl. of all taxes</div>
+
+            <div class="product-offers-box">
+                <div class="product-offer-row">
+                    <span>Rs.30 OFF First Order &middot; Code FIRST30</span>
+                </div>
+                <div class="product-offer-row">
+                    <span>Rs.50 OFF Above 1499 &middot; Code FIRST50</span>
+                </div>
+            </div>
 
             <p class="product-short">{{ product.description[:220] }}{% if product.description|length > 220 %}...{% endif %}</p>
 
@@ -3496,7 +3836,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="related-grid">
             {% for p in related_products %}
           <a href="/product/{{ p.id }}" class="related-card">
-   <img src="{{ p.images[0].image_url if p.images and p.images[0] else '/static/images/default.png' }}">
+   <img src="{{ p.images[0].image_url if p.images and p.images[0] else '/static/images/default.png' }}" alt="{{ p.name }} - related product from Belt Purse Store">
     <div class="related-card-body">
         <h4>{{ p.name }}</h4>
         <div class="price-row">

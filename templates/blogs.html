@@ -3,7 +3,7 @@
 <style>
 body
 {
- font-family: 'Cormorant Garamond', serif;
+ font-family: 'Jost', sans-serif !important;
 }
 .blogs-container {
     padding: 50px;
@@ -27,13 +27,13 @@ body
     border-radius: 16px;
     overflow: hidden;
     cursor: pointer;
-    transition: 0.35s ease;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    transition: none;
+    box-shadow: none;
 }
 
 .blog-card:hover {
-    transform: translateY(-10px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    transform: none;
+    box-shadow: none;
 }
 
 .blog-card img {
@@ -76,7 +76,8 @@ body
             <img src="{{ blog_image_url(b.image) }}">
 
             <div class="blog-content">
-                <p>{{ b.author }} - {% if b.created_at %}{{ b.created_at.strftime('%d %b %Y') }}{% else %}Recently added{% endif %}</p>
+                {% set display_date = b.blog_date or (b.created_at.date() if b.created_at else none) %}
+                <p>{% if display_date %}{{ display_date.strftime('%d %b %Y') }}{% else %}Recently added{% endif %}</p>
                 <h3>{{ b.title }}</h3>
 
                 <span class="read-more">Read More &rarr;</span>
@@ -90,11 +91,13 @@ body
 
 -->
 {% extends "base.html" %}
+{% block title %}Latest Belt & Fashion Accessory Articles | Belt Purse Store{% endblock %}
+{% block meta_description %}Read Belt Purse Store articles about premium leather belts, wallets, purses and fashion accessories for shoppers in Indore and across India.{% endblock %}
 {% block content %}
 
 <style>
     body {
-        font-family: 'Cormorant Garamond', serif;
+        font-family: 'Jost', sans-serif !important;
         background: #f7f7f7;
         margin: 0;
         padding: 0;
@@ -193,8 +196,10 @@ body
 
     .blog-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 24px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 28px;
+        max-width: 1120px;
+        margin: 0 auto;
     }
 
     .blog-card {
@@ -202,36 +207,48 @@ body
         border-radius: 16px;
         overflow: hidden;
         cursor: pointer;
-        transition: all 0.35s ease;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.07);
+        transition: none !important;
+        box-shadow: none !important;
+        width: 100%;
+        max-width: none;
+        padding-top: 0 !important;
     }
 
     .blog-card:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        transform: none !important;
+        box-shadow: none !important;
     }
 
     .blog-image {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    background: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    padding: 0;
-    border: 0;
-}
+        width: 100% !important;
+        aspect-ratio: 1 / 1 !important;
+        background: transparent;
+        display: block !important;
+        overflow: hidden;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: 0;
+    }
 
-.blog-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
+    .blog-image img {
+        width: 100% !important;
+        height: 100% !important;
+        aspect-ratio: 1 / 1 !important;
+        object-fit: cover !important;
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+
+    .blog-card:hover img {
+        transform: none !important;
+    }
 
     .blog-content {
         padding: 18px;
+        padding-top: 18px !important;
     }
 
     .blog-meta {
@@ -302,15 +319,17 @@ body
         }
 
         .blog-grid {
-            grid-template-columns: 1fr;
-            gap: 8px;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 12px !important;
+            max-width: 100% !important;
         }
 
         .blogs-container .blog-card {
             padding: 0 !important;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+            box-shadow: none !important;
+            transform: none !important;
         }
 
         .blogs-container .blog-image {
@@ -319,7 +338,7 @@ body
             background: transparent;
             border: 0;
             border-radius: 12px 12px 0 0;
-            aspect-ratio: 16 / 8.5;
+            aspect-ratio: 1 / 1;
             overflow: hidden;
         }
 
@@ -329,6 +348,7 @@ body
             display: block;
             object-fit: cover;
             border-radius: 12px 12px 0 0;
+            transform: none !important;
         }
 
         .blog-content {
@@ -359,6 +379,12 @@ body
             line-height: 1.1;
         }
     }
+
+    @media (max-width: 380px) {
+        .blog-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
 </style>
 
 
@@ -378,12 +404,17 @@ body
 
     <div class="blog-content">
                 <div class="blog-meta">
-                    {{ b.author }} - {% if b.created_at %}{{ b.created_at.strftime('%d %b %Y') }}{% else %}Recently added{% endif %}
+                    {% set display_date = b.blog_date or (b.created_at.date() if b.created_at else none) %}
+                    {% if display_date %}{{ display_date.strftime('%d %b %Y') }}{% else %}Recently added{% endif %}
                 </div>
 
                 <h3>{{ b.title }}</h3>
 
-                <p>{{ b.content | striptags | truncate(100) }}</p>
+                {% set excerpt = b.content | striptags | trim %}
+                {% if excerpt.lower().startswith('introduction') %}
+                    {% set excerpt = excerpt[12:] | trim %}
+                {% endif %}
+                <p>{{ excerpt | truncate(100) }}</p>
 
                 <span class="read-more">Read More &rarr;</span>
             </div>

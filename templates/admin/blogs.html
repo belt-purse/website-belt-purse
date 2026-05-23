@@ -73,8 +73,9 @@
                         <div class="blog-info">
                             <h4>{{ blog.title }}</h4>
                             <p>
-                                {% if blog.created_at %}
-                                    {{ blog.created_at.strftime('%d %b %Y') }}
+                                {% set display_date = blog.blog_date or (blog.created_at.date() if blog.created_at else none) %}
+                                {% if display_date %}
+                                    {{ display_date.strftime('%d %b %Y') }}
                                 {% else %}
                                     Recently added
                                 {% endif %}

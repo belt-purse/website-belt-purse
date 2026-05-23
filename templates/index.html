@@ -1,668 +1,154 @@
 {% extends "base.html" %}
 
+{% block title %}Belt Purse Store Indore | Premium Leather Belts & Accessories{% endblock %}
+{% block meta_description %}Belt Purse Store in Indore offers premium leather belts, wallets & fashion accessories. Quality craftsmanship, affordable prices. Shop online or visit us in Madhya Pradesh.{% endblock %}
+
 {% block content %}
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<style>
-    .index-page-section-white {
-        background: #ffffff !important;
-    }
-
-    .index-page-section-soft {
-        background: #faf7f2 !important;
-    }
-
-    .index-page-section-white,
-    .index-page-section-soft {
-        color: var(--text-default);
-    }
-
-    .featured-collection {
-        background: #faf7f2 !important;
-        padding-bottom: 18px !important;
-        box-shadow: none !important;
-        overflow: hidden !important;
-    }
-
-    .featured-collection .featured-actions {
-        background: #faf7f2 !important;
-        margin-bottom: 0 !important;
-        box-shadow: none !important;
-    }
-
-    .featured-collection + .categories.section-space {
-        margin-top: 0 !important;
-        box-shadow: none !important;
-    }
-
-    .featured-collection .product-card,
-    .featured-collection .product-card:hover {
-        transform: none !important;
-        box-shadow: 0 18px 44px rgba(8, 62, 58, 0.1) !important;
-        transition: none !important;
-        border-radius: 18px !important;
-        overflow: hidden !important;
-    }
-
-    .featured-collection .product-image-wrapper {
-        width: 100% !important;
-        aspect-ratio: 1 / 1 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        background: transparent !important;
-        border: 0 !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        overflow: visible !important;
-    }
-
-    .featured-collection .product-image-wrapper::before,
-    .featured-collection .product-image-wrapper::after {
-        display: none !important;
-        content: none !important;
-    }
-
-    .featured-collection .product-image-wrapper img,
-    .featured-collection .product-card img,
-    .featured-collection .product-img,
-    .featured-collection .product-card:hover img {
-        width: 100% !important;
-        height: 100% !important;
-        aspect-ratio: 1 / 1 !important;
-        display: block !important;
-        object-fit: cover !important;
-        background: transparent !important;
-        border: 0 !important;
-        border-radius: 18px 18px 0 0 !important;
-        box-shadow: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        transform: none !important;
-        transition: none !important;
-    }
-
-    @media (max-width: 768px) {
-        .hero {
-            --index-mobile-section-bg: #ffffff;
-            background: var(--index-mobile-section-bg) !important;
-        }
-
-        .featured-collection {
-            --index-mobile-section-bg: #faf7f2;
-            background: var(--index-mobile-section-bg) !important;
-            padding-bottom: 18px !important;
-        }
-
-        .categories {
-            --index-mobile-section-bg: #ffffff;
-            background: var(--index-mobile-section-bg) !important;
-        }
-
-        .blog {
-            --index-mobile-section-bg: #faf7f2;
-            background: var(--index-mobile-section-bg) !important;
-        }
-
-        .materials {
-            --index-mobile-section-bg: #ffffff;
-            background: var(--index-mobile-section-bg) !important;
-        }
-
-        .services {
-            --index-mobile-section-bg: #faf7f2;
-            background: var(--index-mobile-section-bg) !important;
-        }
-
-        .why {
-            --index-mobile-section-bg: #ffffff;
-            background: var(--index-mobile-section-bg) !important;
-        }
-
-        .faq {
-            --index-mobile-section-bg: #faf7f2;
-            background: var(--index-mobile-section-bg) !important;
-        }
-
-        .contact {
-            --index-mobile-section-bg: #ffffff;
-            background: var(--index-mobile-section-bg) !important;
-        }
-
-        .featured-collection .product-container,
-        .featured-collection .featured-actions {
-            background: #faf7f2 !important;
-        }
-
-        .featured-collection .product-container {
-            padding-bottom: 0 !important;
-            margin-bottom: 0 !important;
-            align-items: flex-start !important;
-        }
-
-        section.products.featured-collection .product-container,
-        section.products.featured-collection .featured-actions {
-            background: transparent;
-            box-shadow: none;
-        }
-
-        .featured-collection .product-card,
-        .featured-collection .product-card:hover {
-            background: #ffffff !important;
-            border: 1px solid rgba(8, 62, 58, 0.08) !important;
-            border-radius: 18px !important;
-            box-shadow: 0 12px 30px rgba(8, 62, 58, 0.08) !important;
-            height: auto !important;
-            margin-bottom: 0 !important;
-            overflow: hidden !important;
-        }
-
-        section.products.featured-collection .product-container .product-card,
-        section.products.featured-collection .product-container .product-card:hover,
-        section.products.featured-collection .product-container .product-card:focus,
-        section.products.featured-collection .product-container .product-card:active {
-            background: #ffffff !important;
-            box-shadow: 0 12px 30px rgba(8, 62, 58, 0.08) !important;
-            outline: 0;
-        }
-
-        .featured-collection .product-info,
-        .featured-collection .price-box,
-        .featured-collection .rating,
-        .featured-collection .product-info h4 {
-            background: #ffffff !important;
-        }
-
-        .featured-collection .product-info {
-            padding-top: 8px !important;
-            padding-bottom: 10px !important;
-        }
-
-        .featured-collection .product-image-wrapper {
-            padding: 0 !important;
-            margin: 0 !important;
-            background: #ffffff !important;
-            border: 0 !important;
-            border-radius: 18px 18px 0 0 !important;
-            box-shadow: none !important;
-            overflow: hidden !important;
-        }
-
-        .featured-collection .product-image-wrapper img,
-        .featured-collection .product-card img,
-        .featured-collection .product-img {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: cover !important;
-            background: #ffffff !important;
-            border-radius: 18px 18px 0 0 !important;
-        }
-
-        .categories .cat-list,
-        .blog .blog-grid,
-        .materials .material-grid,
-        .services .service-grid,
-        .why .why-grid,
-        .faq .faq-container,
-        .contact .contact-container {
-            background: transparent !important;
-        }
-
-        .blog .blog-card,
-        .blog .blog-overlay,
-        .services .service-card {
-            background-color: transparent !important;
-        }
-
-        .faq .faq-item {
-            background: #faf7f2 !important;
-            border-color: rgba(8, 62, 58, 0.08) !important;
-            box-shadow: 0 8px 20px rgba(8, 62, 58, 0.04) !important;
-        }
-    }
-
-</style>
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-
-    document.querySelectorAll(".faq-question").forEach(button => {
-        button.addEventListener("click", () => {
-
-            const faqItem = button.parentElement;
-            const answer = faqItem.querySelector(".faq-answer");
-            const icon = button.querySelector("span");
-
-            const isOpen = faqItem.classList.contains("active");
-
-            document.querySelectorAll(".faq-item").forEach(item => {
-                item.classList.remove("active");
-                item.querySelector(".faq-answer").style.maxHeight = null;
-                item.querySelector(".faq-question span").innerText = "+";
-            });
-
-            if (!isOpen) {
-                faqItem.classList.add("active");
-                answer.style.maxHeight = answer.scrollHeight + 24 + "px";
-                icon.innerText = "−";
-            }
-        });
-    });
-
-});
-</script>
-
-<!-- 🎬 HERO -->
-<section class="hero index-page-section-white">
+<section class="hero update-hero">
+    <h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Belt Purse Store - Premium Leather Belts & Fashion Accessories in Indore</h1>
     <div class="hero-slider" id="heroSlider">
-
-        <!-- Slide 1 -->
-        <div class="hero-slide active">
-            <img src="/static/images/herosection1.png" alt="BeltPurse Hero 1" class="hero-bg-img">
-
+        {% set fallback_hero_slides = [
+            {'media_url': '/static/images/herosection1.png', 'mobile_media_url': none, 'alt_text': 'Textured formal belt', 'title': 'Textured Formal Belt', 'subtitle': 'Slightly glossy finish with crossing line texture', 'button_text': 'Explore Collection', 'button_link': '/products-page'},
+            {'media_url': '/static/images/herosection2.png', 'mobile_media_url': none, 'alt_text': 'Premium carbon fiber design belt', 'title': 'Carbon Fiber Design Belt', 'subtitle': 'Matt finish with a decent premium look', 'button_text': 'Shop Premium Belts', 'button_link': '/products-page'},
+            {'media_url': '/static/images/herosection3.png', 'mobile_media_url': none, 'alt_text': 'Glossy dot texture belt', 'title': 'Glossy Dot Texture Belt', 'subtitle': 'A refined formal belt with all-over dotted texture', 'button_text': 'Upgrade Your Style', 'button_link': '/products-page'}
+        ] %}
+        {% set active_hero_slides = hero_slides if hero_slides is defined else fallback_hero_slides %}
+        {% for slide in active_hero_slides %}
+        <div class="hero-slide {% if loop.first %}active{% endif %}">
+            <picture>
+                {% if slide.mobile_media_url %}
+                <source media="(max-width: 768px)" srcset="{{ slide.mobile_media_url }}">
+                {% endif %}
+                <img src="{{ slide.media_url }}" alt="{{ slide.alt_text or slide.title or 'Belt Purse hero image' }}" class="hero-bg-img">
+            </picture>
             <div class="hero-overlay"></div>
-
             <div class="hero-content">
-                <span class="hero-tagline">Upgrade Your Everyday Style</span>
-                <h1>Textured Formal Belt</h1>
-                <p>Slightly glossy finish with crossing line texture</p>
-                <a href="/products-page" class="hero-btn">Explore Collection</a>
+                <span class="hero-tagline">{{ slide.button_text or 'Upgrade Your Everyday Style' }}</span>
+                <h2>{{ slide.title or 'Premium Belt Collection' }}</h2>
+                <p>{{ slide.subtitle or 'Premium belts crafted for everyday style' }}</p>
+                <a href="{{ slide.button_link or '/products-page' }}" class="hero-btn">{{ slide.button_text or 'Explore Collection' }}</a>
             </div>
         </div>
+        {% endfor %}
 
-        <!-- Slide 2 -->
-        <div class="hero-slide">
-            <img src="/static/images/herosection2.png" alt="BeltPurse Hero 2" class="hero-bg-img">
-
-            <div class="hero-overlay"></div>
-
-            <div class="hero-content">
-                <span class="hero-tagline">Premium Belts, Crafted for You</span>
-                <h1>Carbon Fiber Design Belt</h1>
-                <p>Matt finish with a decent premium look</p>
-                <a href="/products-page" class="hero-btn hero-btn-shop">Shop Premium Belts</a>
-            </div>
-        </div>
-
-        <!-- Slide 3 -->
-        <div class="hero-slide">
-            <img src="/static/images/herosection3.png" alt="BeltPurse Hero 3" class="hero-bg-img">
-
-            <div class="hero-overlay"></div>
-
-            <div class="hero-content">
-                <span class="hero-tagline">Smart Design Meets Formal Style</span>
-                <h1>Glossy Dot Texture Belt</h1>
-                <p>A refined formal belt with all-over dotted texture</p>
-                <a href="/products-page" class="hero-btn">Upgrade Your Style</a>
-            </div>
-        </div>
-
-        <!-- dots -->
         <div class="hero-dots">
-            <span class="dot active"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
+            {% for slide in active_hero_slides %}
+            <span class="dot {% if loop.first %}active{% endif %}"></span>
+            {% endfor %}
         </div>
-
     </div>
 </section>
 
-<!-- 🛍 PRODUCTS -->
-<section class="products featured-collection index-page-section-soft">
+<section class="products featured-collection update-products update-trending-section">
     <div class="section-heading featured-header">
-        <h2>Featured Collection</h2>
+        <span>TRENDING COLLECTION</span>
+        <h2>Trending Collection</h2>
     </div>
 
-    <div id="products" class="product-container"></div>
+    <div class="collection-group">
+        <div class="collection-subhead">
+            <span>BELTS</span>
+            <a href="/products-page?category=belt">View All</a>
+        </div>
+        <div id="beltProducts" class="product-container update-product-grid trending-product-grid belt-products-grid"></div>
+    </div>
+
+    <div class="collection-group">
+        <div class="collection-subhead">
+            <span>WALLETS</span>
+            <a href="/products-page?category=wallet">View All</a>
+        </div>
+        <div id="walletProducts" class="product-container update-product-grid trending-product-grid wallet-products-grid"></div>
+    </div>
 
     <div class="featured-actions">
-        <a href="/products-page" class="featured-explore-btn">Shop Premium Belts</a>
+        <a href="/products-page" class="featured-explore-btn">Explore Collection</a>
     </div>
 </section>
 
-<!-- 🧩 CATEGORIES
-<section class="categories section-space">
-    <div class="section-heading">
-        <span>SHOP BY STYLE</span>
-        <h2>Shop by Category</h2>
-    </div>
 
-    <div class="cat-grid">
-        <div class="cat-card">Leather Belts</div>
-        <div class="cat-card">Formal Belts</div>
-        <div class="cat-card">Casual Belts</div>
-        <div class="cat-card">Premium Collection</div>
-    </div>
-</section>
--->
-<section class="categories section-space index-page-section-white">
-  <div class="section-heading">
-    <span>SHOP BY STYLE</span>
-    <h2>Shop by Category</h2>
-  </div>
+<section class="auto-image-slider-section" aria-label="Product image carousel">
+    <div class="auto-image-slider-track">
+        <div class="auto-slide-img"><img src="/static/images/20260413_153959.jpg" alt="Textured formal leather belt from Belt Purse Store Indore"></div>
+        <div class="auto-slide-img"><img src="/static/images/20260413_180520.jpg" alt="Carbon fiber design mens belt with premium buckle"></div>
+        <div class="auto-slide-img"><img src="/static/images/20260413_175128.jpg" alt="Glossy dot texture designer belt for formal wear"></div>
+        <div class="auto-slide-img"><img src="/static/images/download (3).jpg" alt="Premium leather belt accessory collection"></div>
+        <div class="auto-slide-img"><img src="/static/images/download (4).jpg" alt="Stylish belt and wallet accessory collection"></div>
+        <div class="auto-slide-img"><img src="/static/images/Feathered Edge Bridle Leather Belts.jpg" alt="Feathered edge bridle leather belts"></div>
 
-  <div class="cat-list">
-    <div class="cat-row">
-      <div class="cat-image">
-        <img src="/static/images/No flash, no gimmicks — just well-made essentials that feel as good as they look_ Designed for men who value the details @leconteltd.jpg" alt="Leather Belts">
-      </div>
-      <div class="cat-info">
-        <h3>Leather Belts</h3>
-        <p>Timeless essentials crafted for everyday elegance.</p>
-      </div>
-    </div>
-
-    <div class="cat-row">
-      <div class="cat-image">
-        <img src="/static/images/Buy Brown Signature Formal Belt Made In Italy from the Next UK online shop.jpg" alt="Formal Belts">
-      </div>
-      <div class="cat-info">
-        <h3>Formal Belts</h3>
-        <p>Refined styles designed for polished and sophisticated occasions.</p>
-      </div>
-    </div>
-
-    <div class="cat-row">
-      <div class="cat-image">
-        <img src="/static/images/Wrangler Men's Casual Everyday Classic Buffalo Leather Belt for Mens Jeans & Pants, Branded Belt Male Accessories, Light Brown 40.jpg" alt="Casual Belts">
-      </div>
-      <div class="cat-info">
-        <h3>Casual Belts</h3>
-        <p>Relaxed looks with premium comfort and versatility.</p>
-      </div>
-    </div>
-
-    <div class="cat-row">
-      <div class="cat-image">
-        <img src="/static/images/Feathered Edge Bridle Leather Belts.jpg" alt="Premium Collection">
-      </div>
-      <div class="cat-info">
-        <h3>Premium Collection</h3>
-        <p>Luxury pieces made with exceptional attention to detail.</p>
-      </div>
-    </div>
-  </div>
-</section>
-<!-- 📰 BLOG -->
-<section class="blog section-space index-page-section-soft">
-    <div class="section-heading">
-        <span>OUR COLLECTION</span>
-        <h2>From Our Collection</h2>
-    </div>
-
-    <div class="blog-grid">
-        <div class="blog-card">
-            <img src="/static/images/20260413_153959.jpg" alt="">
-            <div class="blog-overlay">
-                <h3>Style Your Belt Right</h3>
-            </div>
-        </div>
-
-        <div class="blog-card">
-            <img src="/static/images/20260413_180520.jpg" alt="">
-            <div class="blog-overlay">
-                <h3>Latest Trends for 2026</h3>
-            </div>
-        </div>
-
-        <div class="blog-card">
-            <img src="/static/images/20260413_175128.jpg" alt="">
-            <div class="blog-overlay">
-                <h3>Luxury Buying Guide</h3>
-            </div>
-        </div>
+        <div class="auto-slide-img"><img src="/static/images/20260413_153959.jpg" alt="Textured formal leather belt from Belt Purse Store Indore"></div>
+        <div class="auto-slide-img"><img src="/static/images/20260413_180520.jpg" alt="Carbon fiber design mens belt with premium buckle"></div>
+        <div class="auto-slide-img"><img src="/static/images/20260413_175128.jpg" alt="Glossy dot texture designer belt for formal wear"></div>
+        <div class="auto-slide-img"><img src="/static/images/download.jpg" alt="Premium fashion accessories from Belt Purse Store"></div>
+        <div class="auto-slide-img"><img src="/static/images/download (1).jpg" alt="Leather belt and wallet collection online India"></div>
+        <div class="auto-slide-img"><img src="/static/images/Feathered Edge Bridle Leather Belts.jpg" alt="Feathered edge bridle leather belts"></div>
     </div>
 </section>
-<!-- 🧵 MATERIALS -->
-<section class="materials section-space index-page-section-white">
-    <div class="section-heading">
-        <span>CRAFTED WITH CARE</span>
-        <h2>Material We Use</h2>
+
+<section class="portrait-video-section">
+    <div class="section-heading video-section-heading">
+        <span>INSIDE THE COLLECTION</span>
+        <h2>Crafted For Everyday Style</h2>
     </div>
 
-    <div class="material-grid">
-        <div class="lux-card">
-            <h3>Genuine Leather</h3>
-            <p>Genuine Leather: Premium, durable, and designed to age beautifully.</p>
+    <div class="portrait-video-grid">
+        {% set fallback_style_videos = [
+            {'media_url': '/static/images/videoplayback (1).mp4', 'title': 'Crafted for Everyday Style'},
+            {'media_url': '/static/images/videoplayback (2).mp4', 'title': 'Crafted for Everyday Style'}
+        ] %}
+        {% set active_style_videos = style_videos if style_videos is defined else fallback_style_videos %}
+        {% for video in active_style_videos %}
+        <div class="portrait-video-card">
+            <video autoplay muted loop playsinline>
+                <source src="{{ video.media_url }}" type="video/mp4">
+            </video>
         </div>
-
-        <div class="lux-card">
-            <h3>PU Leather</h3>
-            <p>Affordable, stylish, and easy to maintain.</p>
-        </div>
-
-        <div class="lux-card">
-            <h3>Canvas & Fabric</h3>
-            <p>Lightweight and perfect for everyday wear.</p>
-        </div>
-
-        <div class="lux-card">
-            <h3>Metal Hardware</h3>
-            <p>Strong buckles designed for long-term durability.</p>
-        </div>
+        {% endfor %}
     </div>
 </section>
-<!-- ================= SERVICES ================= -->
-<!-- ================= SERVICES ================= -->
-<!-- ================= SERVICES ================= -->
-<section class="services section-space index-page-section-soft" id="services">
+
+
+<section class="services section-space update-services" id="services">
     <div class="section-heading">
         <span>FEATURED SERVICES</span>
-        <h2>Our Services</h2>
+        <h2>Our Service</h2>
     </div>
 
     <div class="service-grid">
-
         <div class="service-card">
-            <div class="service-icon">
-                <i class="fa-solid fa-truck-fast"></i>
-            </div>
+            <div class="service-icon"><i class="fa-solid fa-truck-fast"></i></div>
             <h3>Free Shipping Across India</h3>
-            <p>Fast and reliable doorstep delivery, every time.</p>
-             <!--<a href="#" class="service-arrow">
-                <i class="fa-solid fa-arrow-right"></i>-->
-            </a>
+            <p>Fast and reliable doorstep delivery.</p>
         </div>
 
         <div class="service-card">
-            <div class="service-icon">
-                <i class="fa-solid fa-shield-halved"></i>
-            </div>
-            <h3>2-Year Warranty on Leather Products</h3>
-            <p>Shop with confidence with our trusted warranty support.</p>
-             <!--<a href="#" class="service-arrow">
-               <i class="fa-solid fa-arrow-right"></i>-->
-            </a>
+            <div class="service-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <h3>2-Year Warranty</h3>
+            <p>Trusted support on leather products.</p>
         </div>
 
         <div class="service-card">
-            <div class="service-icon">
-                <i class="fa-solid fa-gem"></i>
-            </div>
-            <h3>Premium Quality Products</h3>
-            <p>Crafted with fine materials for lasting style and durability.</p>
-             <!--<a href="#" class="service-arrow">
-                <i class="fa-solid fa-arrow-right"></i>-->
-            </a>
+            <div class="service-icon"><i class="fa-solid fa-gem"></i></div>
+            <h3>Premium Quality</h3>
+            <p>Fine materials made for daily use.</p>
         </div>
 
         <div class="service-card">
-            <div class="service-icon">
-                <i class="fa-solid fa-lock"></i>
-            </div>
+            <div class="service-icon"><i class="fa-solid fa-lock"></i></div>
             <h3>Secure Payments</h3>
-            <p>Safe and secure payments for worry-free shopping.</p>
-            <!-- <a href="#" class="service-arrow">
-               <i class="fa-solid fa-arrow-right"></i>-->
-            </a>
+            <p>Safe checkout for worry-free shopping.</p>
         </div>
-
     </div>
 </section>
-<!-- ⭐ WHY CHOOSE US -->
-<section class="why section-space index-page-section-white">
-    <div class="section-heading">
-        <span>WHY BeltPurse</span>
-        <h2>Why Choose Us</h2>
-    </div>
+{% endblock %}
 
-   <div class="why-grid">
-    <div class="lux-card">
-        <h3>30+ Years Experience</h3>
-        <p>Trusted craftsmanship in belts & accessories since 1992.</p>
-    </div>
-
-    <div class="lux-card">
-        <h3>Premium Quality</h3>
-        <p>Every product is thoughtfully crafted with fine detail.</p>
-    </div>
-
-   <div class="lux-card">
-    <h3>Corporate Gifting </h3>
-    <p>
-        Perfect for corporate gifting and business partnerships.
-    </p>
-</div>
-
-    <div class="lux-card">
-        <h3>Value for Money</h3>
-        <p>Elegant craftsmanship at affordable pricing.</p>
-    </div>
-</div>
-</section>
-
-
-
-<!-- ================= FAQ ================= -->
-<section class="faq section-space index-page-section-soft" id="faq">
-    <div class="section-heading">
-        <span>QUICK ANSWERS</span>
-        <h2>Frequently Asked Questions</h2>
-    </div>
-
-   <div class="faq-container">
-
-    <div class="faq-item">
-        <button class="faq-question">
-            How does the auto-lock system work?
-            <span>+</span>
-        </button>
-        <div class="faq-answer">
-            The belt uses an advanced auto-lock mechanism with no holes. You simply slide the strap into the buckle and it locks automatically. To release, press the lever on the buckle. It provides a perfect, secure, and hassle-free fit every time.
-        </div>
-    </div>
-
-    <div class="faq-item">
-        <button class="faq-question">
-            Is the belt adjustable for all waist sizes?
-            <span>+</span>
-        </button>
-        <div class="faq-answer">
-            Yes, the belt comes with a micro-adjustable design that allows precise fitting. You can easily adjust it for a perfect fit without fixed holes, making it suitable for most waist sizes.
-        </div>
-    </div>
-
-    <div class="faq-item">
-        <button class="faq-question">
-            Is the belt comfortable for daily use?
-            <span>+</span>
-        </button>
-        <div class="faq-answer">
-            Absolutely. Our belts are feather-light, breathable, and designed with a wrinkle-free strip for all-day comfort. The dual-coated finish ensures durability while maintaining a premium look.
-        </div>
-    </div>
-
-    <div class="faq-item">
-        <button class="faq-question">
-            How can I register for the 2-year warranty?
-            <span>+</span>
-        </button>
-        <div class="faq-answer">
-            You can easily register or claim your warranty through your account. Go to <strong>My Account → Help Center → Warranty Claim</strong> and submit the form with your order details. Our team will review and assist you quickly.
-        </div>
-    </div>
-
-    <div class="faq-item">
-        <button class="faq-question">
-            More Question?
-            <span>+</span>
-        </button>
-        <div class="faq-answer">
-            
-                Get in touch! We’re here to quickly provide you with the info and services you need & answer any question you may have.
-            
-                Call/whatsapp : <strong>+91 7000747936</strong>
-                <strong> only between 11am to 8pm (Monday to Saturday)</strong>
-            
-        </div>
-    </div>
-
-</div>
-</section>
-
-<!-- ================= CONTACT ================= -->
-<section class="contact section-space index-page-section-white" id="contact">
-    <div class="section-heading">
-        <span> GET IN TOUCH</span>
-        <h2>   Contact Us</h2>
-    </div>
-
-    <div class="contact-container">
-
-        <div class="contact-info-card">
-                <p><strong>Email:</strong> beltpurse.com@gmail.com</p>
-            <p><strong>Phone:</strong> +91 7000747936</p>
-            <p><strong>Location:</strong> India</p>
-        </div>
-
-        <form class="contact-form">
-            <input type="text" id="name" name="name" placeholder="Your Name" required>
-            <input type="email" id="email" name="email" placeholder="Your Email" required>
-            <textarea id="message" name="message" placeholder="Your Message" required></textarea>
-            <button type="submit">Send Message</button>
-        </form>
-
-    </div>
-</section>
+{% block page_scripts %}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const contactForm = document.querySelector(".contact-form");
-    if (contactForm) {
-        contactForm.addEventListener("submit", function (e) {
-            e.preventDefault();
-
-            const formData = new FormData(contactForm);
-            const data = {
-                name: formData.get("name"),
-                email: formData.get("email"),
-                message: formData.get("message")
-            };
-
-            fetch("/send-contact-email", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(data)
-            })
-            .then(res => res.json())
-            .then(d => {
-                if (!d.success) {
-                    alert(d.message || "Something went wrong");
-                    return;
-                }
-                alert(d.message || "Email sent successfully");
-                contactForm.reset();
-            })
-            .catch(err => {
-                console.error("Contact email error:", err);
-                alert("Something went wrong");
-            });
-        });
-    }
-
     const slides = document.querySelectorAll(".hero-slide");
     const dots = document.querySelectorAll(".dot");
     const slider = document.getElementById("heroSlider");
+    if (!slides.length || !dots.length || !slider) return;
 
     let current = 0;
     let autoSlide;
@@ -670,25 +156,13 @@ document.addEventListener("DOMContentLoaded", function () {
     function showSlide(index) {
         slides.forEach((slide, i) => {
             slide.classList.toggle("active", i === index);
-            dots[i].classList.toggle("active", i === index);
-
-            const video = slide.querySelector("video");
-            if (!video) return;
-
-            if (i === index) {
-                video.currentTime = 0;
-                video.play().catch(() => {});
-            } else {
-                video.pause();
-            }
+            dots[i]?.classList.toggle("active", i === index);
         });
-
         current = index;
     }
 
     function nextSlide() {
-        let next = (current + 1) % slides.length;
-        showSlide(next);
+        showSlide((current + 1) % slides.length);
     }
 
     function startAutoSlide() {
@@ -707,34 +181,157 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    /* swipe support */
     let startX = 0;
+    slider.addEventListener("touchstart", event => {
+        startX = event.touches[0].clientX;
+    }, { passive: true });
 
-    slider.addEventListener("touchstart", (e) => {
-        startX = e.touches[0].clientX;
-    });
-
-    slider.addEventListener("touchend", (e) => {
-        let endX = e.changedTouches[0].clientX;
-        let diff = startX - endX;
-
-        if (Math.abs(diff) > 50) {
-            stopAutoSlide();
-
-            if (diff > 0) {
-                showSlide((current + 1) % slides.length);
-            } else {
-                showSlide((current - 1 + slides.length) % slides.length);
-            }
-
-            startAutoSlide();
-        }
-    });
+    slider.addEventListener("touchend", event => {
+        const diff = startX - event.changedTouches[0].clientX;
+        if (Math.abs(diff) <= 50) return;
+        stopAutoSlide();
+        showSlide(diff > 0 ? (current + 1) % slides.length : (current - 1 + slides.length) % slides.length);
+        startAutoSlide();
+    }, { passive: true });
 
     showSlide(0);
     startAutoSlide();
 });
-</script>
-<script src="/static/js/script.js"></script>
 
+window.loadProducts = function () {
+    fetch("/products")
+        .then(response => response.json())
+        .then(data => {
+            const beltContainer = document.getElementById("beltProducts");
+            const walletContainer = document.getElementById("walletProducts");
+            if (!beltContainer || !walletContainer) return;
+
+            beltContainer.innerHTML = "";
+            walletContainer.innerHTML = "";
+
+            const products = mergeProductVariants(data || []);
+            const belts = products.filter(product => normalizeType(product) === "belt");
+            const wallets = products.filter(product => normalizeType(product) === "wallet");
+
+            renderProductSet(beltContainer, belts.slice(0, 3), "Belt products are being updated.");
+            renderProductSet(walletContainer, wallets.slice(0, 5), "Premium wallets are coming soon");
+        })
+        .catch(error => console.error("Product load error:", error));
+};
+
+function normalizeType(product) {
+    const value = String(product.product_type || product.category || product.name || "").trim().toLowerCase();
+    if (value.includes("wallet")) return "wallet";
+    if (value.includes("belt")) return "belt";
+    return value;
+}
+
+function mergeProductVariants(data) {
+    return Array.from(data.reduce((items, product) => {
+        const productId = getProductBaseId(product);
+        const current = items.get(productId) || {
+            ...product,
+            id: productId,
+            product_id: productId,
+            colors: [],
+            color_images: {},
+            images: product.images || []
+        };
+        const variantColor = product.color_variant || product.colors?.[0] || null;
+        const availableColors = product.colors?.length ? product.colors : (variantColor ? [variantColor] : []);
+
+        availableColors.forEach(color => {
+            if (color?.id && color?.code && !current.colors.some(item => String(item.id) === String(color.id))) {
+                current.colors.push(color);
+            }
+        });
+
+        if (variantColor?.id && product.images?.length) {
+            current.color_images[variantColor.id] = product.images;
+        }
+
+        if (product.color_images) {
+            current.color_images = { ...current.color_images, ...product.color_images };
+        }
+
+        if ((!current.images || !current.images.length) && product.images?.length) {
+            current.images = product.images;
+        }
+
+        items.set(productId, current);
+        return items;
+    }, new Map()).values());
+}
+
+function renderProductSet(container, products, emptyMessage) {
+    if (!products.length) {
+        container.innerHTML = `<div class="collection-empty">${emptyMessage}</div>`;
+        return;
+    }
+
+    products.forEach(product => {
+        const productId = getProductBaseId(product);
+        const variantColor = product.color_variant || product.colors?.[0] || null;
+        const image = product.images?.[0] || "/static/images/default.png";
+        const colorList = (product.colors?.length ? product.colors : (variantColor ? [variantColor] : []))
+            .filter(color => color?.id && color?.code);
+
+        const ratingHTML = product.rating ? `<div class="rating">★ ${product.rating}</div>` : "";
+        const discountHTML = product.discount_percent > 0 ? `<span class="discount-badge">-${product.discount_percent}%</span>` : "";
+        const oldPriceHTML = product.original_price ? `<span class="old-price">₹${product.original_price}</span>` : "";
+        const colorsHTML = colorList.length
+            ? `<div class="color-options">${colorList.map((color, index) => `
+                <span
+                    class="color-circle${index === 0 ? " active" : ""}"
+                    style="background:${color.code}"
+                    title="${color.name || "Color"}"
+                    data-color="${color.id}"
+                    data-product="${productId}">
+                </span>
+            `).join("")}</div>`
+            : "";
+
+        const card = document.createElement("div");
+        card.className = "product-card";
+        card.innerHTML = `
+            <div class="product-image-wrapper">
+                ${discountHTML}
+                <img class="product-img" src="${image}" alt="${product.name}">
+            </div>
+            <div class="product-info">
+                ${colorsHTML}
+                <h4>${product.name}</h4>
+                ${ratingHTML}
+                <div class="price-box">
+                    <span class="new-price">₹${product.price}</span>
+                    ${oldPriceHTML}
+                </div>
+            </div>
+        `;
+
+        const imageElement = card.querySelector(".product-img");
+        card.querySelectorAll(".color-circle").forEach(circle => {
+            circle.addEventListener("mouseenter", () => {
+                card.querySelectorAll(".color-circle").forEach(item => item.classList.remove("active"));
+                circle.classList.add("active");
+                const images = product.color_images?.[circle.dataset.color];
+                if (images?.length) imageElement.src = images[0];
+            });
+            circle.addEventListener("mouseleave", () => {
+                imageElement.src = image;
+            });
+            circle.addEventListener("click", event => {
+                event.stopPropagation();
+                window.location.href = `/product/${circle.dataset.product}?color=${circle.dataset.color}`;
+            });
+        });
+
+        card.addEventListener("click", () => {
+            window.location.href = getProductDetailUrl(product);
+        });
+
+        container.appendChild(card);
+    });
+}
+</script>
 {% endblock %}

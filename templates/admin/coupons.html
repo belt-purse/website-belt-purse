@@ -1,0 +1,126 @@
+{% extends "admin/base_admin.html" %}
+{% block content %}
+
+<div class="coupon-admin-page">
+    <div class="coupon-admin-header">
+        <div>
+            <h2>Coupons / Promo Codes</h2>
+            <p>Create and manage creator, campaign, and checkout promo codes.</p>
+        </div>
+        <a href="{{ url_for('admin_add_coupon') }}" class="coupon-admin-btn">+ Add Coupon</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="coupon-alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="coupon-table-wrap">
+        <table class="coupon-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Discount</th>
+                    <th>Validity</th>
+                    <th>Usage</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for coupon in coupons %}
+                {% set real_used = coupon_usage_count(coupon.id) %}
+                {% set shown_used = [coupon.used_count or 0, real_used] | max %}
+                <tr>
+                    <td>
+                        <strong>{{ coupon.code }}</strong>
+                        <small>{{ coupon.title or '-' }}</small>
+                    </td>
+                    <td>
+                        {% if coupon.discount_type == 'percent' %}
+                            {{ coupon.discount_value|int }}%
+                            {% if coupon.max_discount_amount %}<small>Max Rs.{{ coupon.max_discount_amount|int }}</small>{% endif %}
+                        {% else %}
+                            Rs.{{ coupon.discount_value|int }}
+                        {% endif %}
+                        {% if coupon.min_order_amount %}<small>Min Rs.{{ coupon.min_order_amount|int }}</small>{% endif %}
+                    </td>
+                    <td>
+                        <small>From: {{ coupon.valid_from.strftime('%d %b %Y') if coupon.valid_from else 'Anytime' }}</small>
+                        <small>Until: {{ coupon.valid_until.strftime('%d %b %Y') if coupon.valid_until else 'No expiry' }}</small>
+                    </td>
+                    <td>
+                        <span>{{ shown_used }}</span>
+                        {% if coupon.usage_limit %}
+                            <small>Remaining: {{ [coupon.usage_limit - shown_used, 0] | max }}</small>
+                        {% else %}
+                            <small>No total limit</small>
+                        {% endif %}
+                        <small>Per user: {{ coupon.per_user_limit or 'No limit' }}</small>
+                    </td>
+                    <td>
+                        <span class="coupon-status {{ 'active' if coupon.is_active else 'inactive' }}">
+                            {{ 'Active' if coupon.is_active else 'Inactive' }}
+                        </span>
+                        {% if coupon.first_order_only %}<small>First order only</small>{% endif %}
+                    </td>
+                    <td>
+                        <div class="coupon-actions">
+                            <a href="{{ url_for('admin_edit_coupon', coupon_id=coupon.id) }}">Edit</a>
+                            <a href="{{ url_for('admin_toggle_coupon', coupon_id=coupon.id) }}">{{ 'Deactivate' if coupon.is_active else 'Activate' }}</a>
+                            <a href="{{ url_for('admin_delete_coupon', coupon_id=coupon.id) }}" class="danger">Delete</a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="coupon-empty">No coupons yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.coupon-admin-page { padding: 32px; background: #fff; min-height: 100vh; }
+.coupon-admin-header { display: flex; justify-content: space-between; gap: 18px; align-items: center; margin-bottom: 24px; }
+.coupon-admin-header h2 { margin: 0 0 6px; font-weight: 400; color: #111; }
+.coupon-admin-header p { margin: 0; color: #555; }
+.coupon-admin-btn,
+.coupon-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 9px 14px;
+    background: #0A5C56;
+    color: #fff !important;
+    text-decoration: none;
+    border-radius: 0;
+    font-size: 13px;
+}
+.coupon-alert { margin-bottom: 14px; padding: 12px 14px; border: 1px solid rgba(10,92,86,0.22); color: #0A5C56; background: rgba(10,92,86,0.06); }
+.coupon-alert.error { border-color: rgba(180,35,24,0.25); color: #b42318; background: rgba(180,35,24,0.06); }
+.coupon-table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; }
+.coupon-table { width: 100%; border-collapse: collapse; min-width: 920px; }
+.coupon-table th,
+.coupon-table td { padding: 14px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+.coupon-table th { color: #083E3A; font-weight: 500; background: #f8faf9; }
+.coupon-table small { display: block; color: #666; margin-top: 4px; }
+.coupon-status { display: inline-block; padding: 5px 9px; background: #eee; color: #333; }
+.coupon-status.active { background: rgba(10,92,86,0.1); color: #0A5C56; }
+.coupon-status.inactive { background: rgba(180,35,24,0.08); color: #b42318; }
+.coupon-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.coupon-actions .danger { background: #b42318; }
+.coupon-empty { text-align: center !important; color: #777; }
+@media (max-width: 768px) {
+    .coupon-admin-page { padding: 20px 12px; }
+    .coupon-admin-header { align-items: flex-start; flex-direction: column; }
+}
+</style>
+
+{% endblock %}

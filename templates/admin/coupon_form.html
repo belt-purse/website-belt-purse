@@ -1,0 +1,136 @@
+{% extends "admin/base_admin.html" %}
+{% block content %}
+
+{% set is_edit = coupon is not none %}
+{% macro field_value(name, fallback='') -%}
+    {{ form_data.get(name, fallback) if form_data else fallback }}
+{%- endmacro %}
+
+<div class="coupon-form-page">
+    <div class="coupon-form-header">
+        <div>
+            <h2>{{ 'Edit Coupon' if is_edit else 'Add Coupon' }}</h2>
+            <p>{{ 'Update an existing promo code and reuse expired campaigns.' if is_edit else 'Create a database-backed promo code for checkout.' }}</p>
+        </div>
+        <a href="{{ url_for('admin_coupons') }}">Back to Coupons</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="coupon-alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form class="coupon-form-card" method="POST">
+        <div class="coupon-form-grid">
+            <label>
+                <span>Coupon Code</span>
+                <input name="code" value="{{ field_value('code', coupon.code if coupon else '') }}" required>
+            </label>
+
+            <label>
+                <span>Coupon Title/Name</span>
+                <input name="title" value="{{ field_value('title', coupon.title if coupon else '') }}">
+            </label>
+
+            <label>
+                <span>Discount Type</span>
+                {% set selected_type = field_value('discount_type', coupon.discount_type if coupon else 'fixed') %}
+                <select name="discount_type">
+                    <option value="fixed" {% if selected_type == 'fixed' %}selected{% endif %}>Fixed Amount</option>
+                    <option value="percent" {% if selected_type == 'percent' %}selected{% endif %}>Percentage</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Discount Value</span>
+                <input type="number" step="0.01" min="0" name="discount_value" value="{{ field_value('discount_value', coupon.discount_value if coupon else '') }}" required>
+            </label>
+
+            <label>
+                <span>Minimum Order Amount</span>
+                <input type="number" step="0.01" min="0" name="min_order_amount" value="{{ field_value('min_order_amount', coupon.min_order_amount if coupon and coupon.min_order_amount is not none else '') }}">
+            </label>
+
+            <label>
+                <span>Maximum Discount Amount</span>
+                <input type="number" step="0.01" min="0" name="max_discount_amount" value="{{ field_value('max_discount_amount', coupon.max_discount_amount if coupon and coupon.max_discount_amount is not none else '') }}">
+            </label>
+
+            <label>
+                <span>Valid From</span>
+                <input type="date" name="valid_from" value="{{ field_value('valid_from', coupon.valid_from.strftime('%Y-%m-%d') if coupon and coupon.valid_from else '') }}">
+            </label>
+
+            <label>
+                <span>Valid Until</span>
+                <input type="date" name="valid_until" value="{{ field_value('valid_until', coupon.valid_until.strftime('%Y-%m-%d') if coupon and coupon.valid_until else '') }}">
+            </label>
+
+            <label>
+                <span>Total Usage Limit</span>
+                <input type="number" min="0" name="usage_limit" value="{{ field_value('usage_limit', coupon.usage_limit if coupon and coupon.usage_limit is not none else '') }}">
+            </label>
+
+            <label>
+                <span>Per User Limit</span>
+                <input type="number" min="0" name="per_user_limit" value="{{ field_value('per_user_limit', coupon.per_user_limit if coupon and coupon.per_user_limit is not none else 1) }}">
+            </label>
+        </div>
+
+        <div class="coupon-checks">
+            <label>
+                <input type="checkbox" name="first_order_only" {% if form_data and form_data.get('first_order_only') or (not form_data and coupon and coupon.first_order_only) %}checked{% endif %}>
+                <span>First Order Only</span>
+            </label>
+            <label>
+                <input type="checkbox" name="is_active" {% if form_data and form_data.get('is_active') or (not form_data and (not coupon or coupon.is_active)) %}checked{% endif %}>
+                <span>Active</span>
+            </label>
+        </div>
+
+        <button type="submit">{{ 'Update Coupon' if is_edit else 'Create Coupon' }}</button>
+    </form>
+</div>
+
+<style>
+.coupon-form-page { padding: 32px; background: #fff; min-height: 100vh; }
+.coupon-form-header { display: flex; justify-content: space-between; gap: 18px; align-items: center; margin-bottom: 24px; }
+.coupon-form-header h2 { margin: 0 0 6px; font-weight: 400; color: #111; }
+.coupon-form-header p { margin: 0; color: #555; }
+.coupon-form-header a { color: #0A5C56; text-decoration: none; }
+.coupon-alert { margin-bottom: 14px; padding: 12px 14px; border: 1px solid rgba(10,92,86,0.22); color: #0A5C56; background: rgba(10,92,86,0.06); }
+.coupon-alert.error { border-color: rgba(180,35,24,0.25); color: #b42318; background: rgba(180,35,24,0.06); }
+.coupon-form-card { border: 1px solid #e5e7eb; padding: 22px; max-width: 980px; }
+.coupon-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.coupon-form-card label span { display: block; color: #083E3A; font-size: 13px; margin-bottom: 7px; }
+.coupon-form-card input,
+.coupon-form-card select {
+    width: 100%;
+    padding: 12px 13px;
+    border: 1px solid #d9dedc;
+    border-radius: 0;
+    font-family: 'Jost', sans-serif;
+}
+.coupon-checks { display: flex; flex-wrap: wrap; gap: 18px; margin: 18px 0; }
+.coupon-checks label { display: inline-flex; align-items: center; gap: 8px; }
+.coupon-checks input { width: auto; }
+.coupon-form-card button {
+    min-height: 42px;
+    padding: 11px 22px;
+    background: #0A5C56;
+    color: #fff;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+}
+@media (max-width: 768px) {
+    .coupon-form-page { padding: 20px 12px; }
+    .coupon-form-header { align-items: flex-start; flex-direction: column; }
+    .coupon-form-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+{% endblock %}

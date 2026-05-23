@@ -5,17 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Panel</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.cdnfonts.com/css/gotham" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
     --sidebar-width: 270px;
 
     /* ✅ LIGHT THEME */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8fafc;
+    --bg-primary: rgb(239, 239, 239);
+    --bg-secondary: rgb(239, 239, 239);
 
     --card-bg: #ffffff;
     --card-border: #e5e7eb;
@@ -33,7 +30,7 @@
 }
 h1, h2, h3, h4, h5, h6 {
     color: #000;
-    font-family: "Cormorant Garamond", Georgia, serif !important;
+    font-family: 'Jost', sans-serif !important;
 }
 h1,
 h2,
@@ -48,10 +45,10 @@ body *:not(i):not(.fa):not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.fa-l
     padding: 0;
     letter-spacing: 0.2px;
     box-sizing: border-box;
-    font-family: "Gotham", "Inter", sans-serif;
+    font-family: 'Jost', sans-serif !important;
 }
 html, body {
-    background: #ffffff;
+    background: rgb(239, 239, 239) !important;
     color: var(--text-primary);
     overflow-x: hidden;
      max-width: 100%;
@@ -397,6 +394,16 @@ html, body {
             Orders
         </a>
 
+        <a href="/admin/coupons">
+            <span class="icon">%</span>
+            Coupons
+        </a>
+
+        <a href="/admin/homepage-media">
+            <span class="icon">M</span>
+            Website Media
+        </a>
+
         <a href="/admin/users">
             <span class="icon">👥</span>
             Users
@@ -442,6 +449,46 @@ html, body {
 </div>
 
 <style>
+html,
+body,
+.main,
+.dashboard,
+.products-page,
+.product-page,
+.orders-container,
+.admin-users-page,
+.settings-container,
+.admin-wrap,
+.blogs-page,
+.blog-form-page,
+.edit-blog-page,
+.detail-container,
+.admin-panel,
+.admin-dashboard,
+.admin-content {
+    background: rgb(239, 239, 239) !important;
+}
+
+.card,
+.admin-card,
+.table-card,
+.premium-form-card,
+.blog-form-card,
+.edit-card,
+.form-card,
+.stat-card,
+.product-card,
+.dashboard-header,
+.page-header,
+.top-bar,
+.form-section,
+.table-wrapper,
+input,
+textarea,
+select {
+    background-color: #ffffff;
+}
+
 @media (max-width: 768px) {
     html,
     body {
@@ -1416,6 +1463,111 @@ html, body {
             flex-direction: row !important;
             justify-content: flex-start !important;
         }
+    }
+}
+
+.card,
+.admin-card,
+.table-card,
+.premium-form-card,
+.blog-form-card,
+.edit-card,
+.form-card,
+.stat-card,
+.product-card,
+.detail-view,
+.settings-container .card,
+.dashboard-header,
+.page-header,
+.top-bar,
+.form-section,
+.table-wrapper,
+input,
+textarea,
+select,
+button,
+.btn,
+img:not(.avatar):not(.avatar-img):not(.premium-avatar) {
+    border-radius: 0 !important;
+}
+
+.avatar,
+.avatar-img,
+.premium-avatar,
+.badge,
+.id-badge,
+.author-badge,
+.status {
+    border-radius: 999px !important;
+}
+</style>
+
+<style>
+/* Admin scroll fix: keep long pages and long sidebar menus reachable. */
+html,
+body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+.main,
+.admin-layout,
+.admin-wrapper,
+.admin-dashboard,
+.admin-main,
+.admin-content,
+.dashboard,
+.products-page,
+.product-page,
+.orders-container,
+.admin-users-page,
+.settings-container,
+.blogs-page,
+.blog-form-page,
+.edit-blog-page,
+.coupon-admin-page,
+.coupon-form-page,
+.media-admin-page,
+.media-form-page {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100vh !important;
+    overflow-y: visible !important;
+}
+
+.main,
+.admin-main,
+.admin-content {
+    padding-bottom: 90px !important;
+}
+
+.sidebar {
+    max-height: calc(100vh - 24px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+.sidebar .nav-links {
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding-bottom: 12px !important;
+}
+
+.logout-wrap {
+    flex-shrink: 0 !important;
+}
+
+@media (max-width: 1024px) {
+    .sidebar {
+        max-height: 100vh !important;
+        overflow-y: auto !important;
+    }
+
+    .main {
+        padding-bottom: 90px !important;
     }
 }
 </style>

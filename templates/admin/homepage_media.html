@@ -1,0 +1,234 @@
+{% extends "admin/base_admin.html" %}
+{% block content %}
+
+<div class="media-admin-page">
+    <div class="media-admin-header">
+        <div>
+            <h2>Website Media</h2>
+            <p>Manage homepage hero slider images and Crafted for Everyday Style videos by position.</p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="media-alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <section class="media-section">
+        <div class="media-section-head">
+            <h3>Hero Slider Images</h3>
+        </div>
+
+        <div class="media-grid">
+            {% for card in hero_cards %}
+            <div class="media-card">
+                <div class="media-position-label">Position {{ card.position }}</div>
+                <div class="media-preview-label">Desktop Image Preview</div>
+                {% if card.preview_url %}
+                    <img src="{{ card.preview_url }}" alt="Hero slider position {{ card.position }}">
+                {% else %}
+                    <div class="media-missing">No image selected</div>
+                {% endif %}
+
+                <div class="media-preview-label">Mobile Image Preview</div>
+                {% if card.mobile_preview_url %}
+                    <img class="media-mobile-preview" src="{{ card.mobile_preview_url }}" alt="Mobile hero slider position {{ card.position }}">
+                {% else %}
+                    <div class="media-mobile-empty">No mobile image uploaded, desktop image will be used on mobile</div>
+                {% endif %}
+
+                <div class="media-card-body">
+                    <span>{{ 'Static fallback image' if card.is_fallback else 'Uploaded image' }}</span>
+                    <small class="media-size-note">Desktop hero image: 2400 x 1350 px or 1920 x 1080 px</small>
+                    <small class="media-size-note">Mobile hero image: 1080 x 1920 px</small>
+
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_homepage_media_position', media_type='hero_image', position=card.position) }}">
+                        <label class="media-file">
+                            <span>Change Desktop Image</span>
+                            <input type="file" name="media_file" accept="image/png,image/jpeg,image/webp">
+                        </label>
+                        <label class="media-file">
+                            <span>Change Mobile Image</span>
+                            <input type="file" name="mobile_media_file" accept="image/png,image/jpeg,image/webp">
+                        </label>
+
+                        <label class="media-checkbox">
+                            <input type="checkbox" name="is_active" {% if card.is_active %}checked{% endif %}>
+                            <span>Active</span>
+                        </label>
+
+                        <div class="media-actions">
+                            <button type="submit">Save</button>
+                            {% if card.media %}
+                                <a class="danger" href="{{ url_for('admin_delete_homepage_media', media_id=card.media.id) }}">{{ 'Remove/Reset' if card.has_fallback else 'Delete' }}</a>
+                            {% else %}
+                                <span class="media-muted">Fallback active</span>
+                            {% endif %}
+                        </div>
+                    </form>
+
+                    {% if card.media and card.position > 3 %}
+                    <form class="media-position-form" method="POST" action="{{ url_for('admin_move_homepage_media', media_id=card.media.id) }}">
+                        <label>
+                            <span>Position</span>
+                            <input type="number" name="position" min="4" value="{{ card.position }}">
+                        </label>
+                        <button type="submit">Update Order</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="media-card media-add-card">
+                <div class="media-position-label">+ Add Extra Hero Slide</div>
+                <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_add_extra_homepage_media', media_type='hero_image') }}">
+                    <label class="media-file">
+                        <span>Desktop Hero Image</span>
+                        <input type="file" name="media_file" accept="image/png,image/jpeg,image/webp" required>
+                    </label>
+                    <label class="media-file">
+                        <span>Mobile Hero Image</span>
+                        <input type="file" name="mobile_media_file" accept="image/png,image/jpeg,image/webp">
+                    </label>
+                    <small class="media-size-note">Desktop: 2400 x 1350 px or 1920 x 1080 px</small>
+                    <small class="media-size-note">Mobile: 1080 x 1920 px</small>
+                    <label>
+                        <span>Position</span>
+                        <input type="number" name="position" min="4" placeholder="Auto">
+                    </label>
+                    <label class="media-checkbox">
+                        <input type="checkbox" name="is_active" checked>
+                        <span>Active</span>
+                    </label>
+                    <button type="submit">Add Extra Hero Slide</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="media-section">
+        <div class="media-section-head">
+            <h3>Crafted for Everyday Style Videos</h3>
+        </div>
+
+        <div class="media-grid video-grid">
+            {% for card in video_cards %}
+            <div class="media-card">
+                <div class="media-position-label">Video Position {{ card.position }}</div>
+                {% if card.preview_url %}
+                    <video src="{{ card.preview_url }}" muted playsinline controls></video>
+                {% else %}
+                    <div class="media-missing media-video-missing">No video selected</div>
+                {% endif %}
+
+                <div class="media-card-body">
+                    <span>{{ 'Static fallback video' if card.is_fallback else 'Uploaded video' }}</span>
+
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_homepage_media_position', media_type='style_video', position=card.position) }}">
+                        <label class="media-file">
+                            <span>Change Video</span>
+                            <input type="file" name="media_file" accept="video/mp4,video/webm">
+                        </label>
+
+                        <label class="media-checkbox">
+                            <input type="checkbox" name="is_active" {% if card.is_active %}checked{% endif %}>
+                            <span>Active</span>
+                        </label>
+
+                        <div class="media-actions">
+                            <button type="submit">Save</button>
+                            {% if card.media %}
+                                <a class="danger" href="{{ url_for('admin_delete_homepage_media', media_id=card.media.id) }}">{{ 'Remove/Reset' if card.has_fallback else 'Delete' }}</a>
+                            {% else %}
+                                <span class="media-muted">Fallback active</span>
+                            {% endif %}
+                        </div>
+                    </form>
+
+                    {% if card.media and card.position > 4 %}
+                    <form class="media-position-form" method="POST" action="{{ url_for('admin_move_homepage_media', media_id=card.media.id) }}">
+                        <label>
+                            <span>Position</span>
+                            <input type="number" name="position" min="5" value="{{ card.position }}">
+                        </label>
+                        <button type="submit">Update Order</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="media-card media-add-card">
+                <div class="media-position-label">+ Add Extra Crafted Video</div>
+                <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_add_extra_homepage_media', media_type='style_video') }}">
+                    <label class="media-file">
+                        <span>Crafted Video</span>
+                        <input type="file" name="media_file" accept="video/mp4,video/webm" required>
+                    </label>
+                    <label>
+                        <span>Position</span>
+                        <input type="number" name="position" min="5" placeholder="Auto">
+                    </label>
+                    <label class="media-checkbox">
+                        <input type="checkbox" name="is_active" checked>
+                        <span>Active</span>
+                    </label>
+                    <button type="submit">Add Extra Crafted Video</button>
+                </form>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+.media-admin-page { padding: 32px; background: #fff; min-height: 100vh; }
+.media-admin-header h2 { margin: 0 0 6px; font-weight: 400; color: #111; }
+.media-admin-header p { margin: 0 0 24px; color: #555; }
+.media-alert { margin-bottom: 14px; padding: 12px 14px; border: 1px solid rgba(10,92,86,0.22); color: #0A5C56; background: rgba(10,92,86,0.06); }
+.media-alert.error { border-color: rgba(180,35,24,0.25); color: #b42318; background: rgba(180,35,24,0.06); }
+.media-section { margin-top: 28px; }
+.media-section-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
+.media-section-head h3 { margin: 0; font-weight: 400; color: #083E3A; }
+.media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; align-items: start; }
+.media-card { border: 1px solid #e5e7eb; background: #fff; }
+.media-position-label { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; color: #083E3A; font-weight: 500; }
+.media-preview-label { padding: 10px 12px 7px; color: #111; font-size: 13px; font-weight: 500; border-top: 1px solid #f0f2f1; }
+.media-card img,
+.media-card video,
+.media-missing { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #f4f4f4; }
+.media-card .media-mobile-preview { aspect-ratio: 9 / 16; object-fit: cover; }
+.media-mobile-empty { min-height: 92px; padding: 18px 12px; display: flex; align-items: center; justify-content: center; text-align: center; color: #777; background: #f4f4f4; font-size: 13px; line-height: 1.4; }
+.media-card video,
+.media-video-missing { aspect-ratio: 9 / 16; }
+.media-missing { display: flex; align-items: center; justify-content: center; color: #777; }
+.media-card-body { padding: 12px; }
+.media-card-body > span { display: block; color: #666; font-size: 13px; margin-bottom: 12px; }
+.media-size-note { display: block; color: #777; font-size: 12px; line-height: 1.35; margin: -5px 0 9px; }
+.media-card label span,
+.media-add-card label span { display: block; color: #083E3A; font-size: 13px; margin-bottom: 7px; }
+.media-card input { width: 100%; padding: 10px 11px; border: 1px solid #d9dedc; border-radius: 0; font-family: 'Jost', sans-serif; }
+.media-file { display: block; margin-bottom: 12px; }
+.media-checkbox { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+.media-checkbox input { width: auto; }
+.media-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px; }
+.media-actions button,
+.media-position-form button,
+.media-add-card button { background: #0A5C56; color: #fff; border: 0; border-radius: 0; padding: 9px 13px; font-size: 13px; cursor: pointer; }
+.media-actions a { background: #0A5C56; color: #fff !important; text-decoration: none; padding: 9px 13px; border-radius: 0; font-size: 13px; }
+.media-actions .danger { background: #b42318; }
+.media-muted { color: #777; font-size: 13px; }
+.media-position-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid #edf0ef; display: grid; gap: 9px; }
+.media-add-card { padding: 0; }
+.media-add-card form { padding: 12px; display: grid; gap: 12px; }
+@media (max-width: 768px) {
+    .media-admin-page { padding: 20px 12px; }
+    .media-section-head { align-items: flex-start; flex-direction: column; }
+    .media-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+{% endblock %}

@@ -1,15 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="cart-container cart-page-container">
+<div class="cart-container cart-page-container {% if products|length == 0 %}cart-is-empty{% endif %}" id="cartPageContainer">
 
-    <h1 class="title">Your Shopping Cart</h1>
+    <h1 class="title" id="cartTitle" style="{% if products|length == 0 %}display:none{% endif %}">Your Shopping Cart</h1>
 
     <!-- Empty state: shown for logged-in empty cart OR initially for guests -->
-    <div class="empty" id="cartEmpty" style="{% if products|length > 0 %}display:none{% endif %}">
-        <h2>Your cart is empty 😔</h2>
-        <p>Start adding some premium belts!</p>
-        <a href="{{ url_for('products_page') }}" class="shop-btn">Explore Collection</a>
+    <div class="empty empty-cart-page" id="cartEmpty" style="{% if products|length > 0 %}display:none{% else %}display:flex{% endif %}">
+        <div class="empty-cart-box">
+            <div class="empty-cart-icon">
+                <i class="fa-solid fa-cart-shopping"></i>
+            </div>
+            <h1>Your Shopping Cart</h1>
+            <h2>Your cart is empty</h2>
+            <p>Start adding your favorite belts and wallets to your cart.</p>
+            <a href="/products-page" class="empty-cart-btn">Explore Collection</a>
+        </div>
     </div>
 
     <!-- Cart grid: always in DOM so JS can populate it for guests -->
@@ -74,7 +80,7 @@
 
 <div class="summary-row">
     <span>Discount</span>
-    <span id="discount">- ₹{{ total * 0.1 }}</span>
+    <span id="discount">- ₹0</span>
 </div>
 
 <div class="summary-row">
@@ -82,12 +88,27 @@
     <span>Free</span>
 </div>
 
-<div class="summary-row total">
-    <span>You Pay</span>
-   <span id="finalTotal">₹{{ total - (total * 0.1) }}</span>
+<div class="coupon-box">
+    <label for="couponCode">Coupon Code</label>
+    <div class="coupon-input-row">
+        <input id="couponCode" type="text" placeholder="FIRST30 or FIRST50" autocomplete="off">
+        <button type="button" onclick="applyCoupon()">Apply</button>
+        <button type="button" class="coupon-remove-btn" onclick="removeCoupon()">Remove</button>
+    </div>
+    <p id="couponMessage" class="coupon-message"></p>
 </div>
 
-         <p class="subtotal">Subtotal: ₹<span id="subtotal">{{ total }}</span></p>
+<div class="summary-row" id="couponDiscountRow" style="display:none;">
+    <span>Coupon Discount</span>
+    <span id="couponDiscount">- â‚¹0</span>
+</div>
+
+<div class="summary-row total">
+    <span>You Pay</span>
+   <span id="finalTotal">₹{{ total }}</span>
+</div>
+
+         <span id="subtotal" hidden>{{ total }}</span>
 
             <button class="checkout-btn" onclick="openCheckout()">Upgrade Your Style</button>
         </div>
@@ -234,7 +255,8 @@ async function startRazorpayPayment(payment){
             body: JSON.stringify({
                 address_index: selectedAddress,
                 payment: payment,
-                payment_method: "razorpay"
+                payment_method: "razorpay",
+                coupon_code: document.getElementById("couponCode")?.value || ""
             })
         });
 
@@ -391,10 +413,14 @@ function loadGuestCart() {
     const container = document.getElementById("cartItems");
     const gridDiv   = document.getElementById("cartGrid");
     const emptyDiv  = document.getElementById("cartEmpty");
+    const titleDiv  = document.getElementById("cartTitle");
+    const cartPage  = document.getElementById("cartPageContainer");
 
     if (!guestCart.length) {
-        if (emptyDiv) emptyDiv.style.display = "block";
+        if (emptyDiv) emptyDiv.style.display = "flex";
         if (gridDiv)  gridDiv.style.display  = "none";
+        if (titleDiv) titleDiv.style.display = "none";
+        if (cartPage) cartPage.classList.add("cart-is-empty");
         return;
     }
 
@@ -404,6 +430,8 @@ function loadGuestCart() {
 
         if (emptyDiv) emptyDiv.style.display = "none";
         if (gridDiv)  gridDiv.style.display  = "grid";
+        if (titleDiv) titleDiv.style.display = "";
+        if (cartPage) cartPage.classList.remove("cart-is-empty");
         if (container) container.innerHTML = "";
 
         let total = 0;
@@ -498,14 +526,14 @@ function guestRemoveCart(productId, colorId, sizeId = null) {
 }
 
 function updateGuestCartSummary(total) {
-    const discount = total * 0.1;
+    const discount = 0;
     const final = total - discount;
     const bagTotal = document.getElementById("bagTotal");
     const discountEl = document.getElementById("discount");
     const finalTotal = document.getElementById("finalTotal");
     const subtotal = document.getElementById("subtotal");
     if (bagTotal) bagTotal.innerText = "₹" + total;
-    if (discountEl) discountEl.innerText = "- ₹" + discount.toFixed(0);
+    if (discountEl) discountEl.innerText = "- ₹0";
     if (finalTotal) finalTotal.innerText = "₹" + final.toFixed(0);
     if (subtotal) subtotal.innerText = total;
 }
@@ -529,7 +557,7 @@ function updateCartUI(){
         subtotal += itemTotal;
     });
 
-    let discount = subtotal * 0.1;
+    let discount = 0;
     let shipping = 0;
     let finalTotal = subtotal - discount + shipping;
 
@@ -544,6 +572,58 @@ function formatMoney(value){
     return "₹" + (Number.isInteger(number) ? number : number.toFixed(0));
 }
 
+function showCouponMessage(message, type){
+    const couponMessage = document.getElementById("couponMessage");
+    if(!couponMessage) return;
+    couponMessage.innerText = message || "";
+    couponMessage.classList.remove("success", "error");
+    if(type) couponMessage.classList.add(type);
+}
+
+function updateCouponSummary(data){
+    const couponRow = document.getElementById("couponDiscountRow");
+    const couponDiscount = document.getElementById("couponDiscount");
+    const finalTotal = document.getElementById("finalTotal");
+    const discountAmount = Number(data && data.discount_amount ? data.discount_amount : 0);
+
+    if(couponRow) couponRow.style.display = discountAmount > 0 ? "flex" : "none";
+    if(couponDiscount) couponDiscount.innerText = "- " + formatMoney(discountAmount);
+    if(finalTotal && data && data.final_amount !== undefined) finalTotal.innerText = formatMoney(data.final_amount);
+}
+
+function applyCoupon(){
+    const couponInput = document.getElementById("couponCode");
+    const code = couponInput ? couponInput.value.trim().toUpperCase() : "";
+
+    fetch('/apply-coupon', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ coupon_code: code })
+    })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+        updateCouponSummary(data);
+        if(ok && data.success){
+            if(couponInput && data.coupon_code) couponInput.value = data.coupon_code;
+            showCouponMessage(data.message || "Coupon applied", "success");
+        } else {
+            showCouponMessage(data.message || "Coupon could not be applied", "error");
+        }
+    })
+    .catch(() => {
+        showCouponMessage("Coupon could not be applied", "error");
+    });
+}
+
+function removeCoupon(){
+    const couponInput = document.getElementById("couponCode");
+    if(couponInput) couponInput.value = "";
+    applyCoupon();
+}
+
 function updateCartSummary(data){
     if(!data) return;
     if(document.getElementById("subtotal")) document.getElementById("subtotal").innerText = Number(data.subtotal || 0).toFixed(0);
@@ -554,13 +634,20 @@ function updateCartSummary(data){
         updateNavbarCounts(data.cart_count, data.wishlist_count);
     }
     updateCartEmptyState(data.is_empty || Number(data.cart_count || 0) <= 0);
+    if(document.getElementById("couponCode")?.value.trim()){
+        applyCoupon();
+    }
 }
 
 function updateCartEmptyState(isEmpty){
     const emptyDiv = document.getElementById("cartEmpty");
     const gridDiv = document.getElementById("cartGrid");
-    if(emptyDiv) emptyDiv.style.display = isEmpty ? "block" : "none";
+    const titleDiv = document.getElementById("cartTitle");
+    const cartPage = document.getElementById("cartPageContainer");
+    if(emptyDiv) emptyDiv.style.display = isEmpty ? "flex" : "none";
     if(gridDiv) gridDiv.style.display = isEmpty ? "none" : "";
+    if(titleDiv) titleDiv.style.display = isEmpty ? "none" : "";
+    if(cartPage) cartPage.classList.toggle("cart-is-empty", isEmpty);
 }
 
 function showLiveToast(message, type = "success"){
@@ -692,8 +779,17 @@ function loadCheckoutReview(){
 
         reviewHTML += `
             <div class="review-total-row">
-                <span>Total:</span>
+                <span>Subtotal:</span>
                 <span>₹${data.total}</span>
+            </div>
+            ${Number(data.discount_amount || 0) > 0 ? `
+            <div class="review-total-row">
+                <span>Coupon (${data.coupon_code}):</span>
+                <span>- â‚¹${data.discount_amount}</span>
+            </div>` : ""}
+            <div class="review-total-row">
+                <span>Total:</span>
+                <span>â‚¹${data.final_amount ?? data.total}</span>
             </div>
         </div>
         `;
@@ -1106,7 +1202,7 @@ function moveToWishlist(id, color = "", size = ""){
     margin:0 auto;
     padding: 30px 32px 50px;
     background:linear-gradient(#f8fafc,#eef3f7);
-    font-family: 'Gotham', sans-serif;
+    font-family: 'Jost', sans-serif !important;
 }
 
 .cart-grid{
