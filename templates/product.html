@@ -11,9 +11,9 @@
     {% set primary_product_image = url_for('static', filename='images/default.png') %}
 {% endif %}
 {% if primary_product_image.startswith('http') %}
-    {% set primary_product_image_url = primary_product_image %}
+    {% set primary_product_image_url = primary_product_image|replace('http://belt-purse.com', 'https://www.belt-purse.com')|replace('http://www.belt-purse.com', 'https://www.belt-purse.com')|replace('http://', 'https://') %}
 {% else %}
-    {% set primary_product_image_url = request.url_root.rstrip('/') ~ primary_product_image %}
+    {% set primary_product_image_url = 'https://www.belt-purse.com' ~ primary_product_image %}
 {% endif %}
 {% block og_image %}{{ primary_product_image_url }}{% endblock %}
 {% block twitter_title %}{{ product.name }} | Belt Purse Store{% endblock %}
@@ -35,7 +35,7 @@
   },
   "offers": {
     "@type": "Offer",
-    "url": {{ request.url|tojson }},
+    "url": {{ ('https://www.belt-purse.com/product/' ~ product.id)|tojson }},
     "priceCurrency": "INR",
     "price": {{ (product.price or 0)|string|tojson }},
     "availability": "https://schema.org/InStock",
@@ -43,11 +43,11 @@
       "@type": "Store",
       "name": "Belt Purse Store"
     }
-  }{% if product.rating or reviews|length > 0 %},
+  }{% if product.rating and reviews|length > 0 %},
   "aggregateRating": {
     "@type": "AggregateRating",
-    "ratingValue": {{ (product.rating or 5.0)|string|tojson }},
-    "reviewCount": {{ (reviews|length if reviews|length > 0 else 1)|string|tojson }}
+    "ratingValue": {{ product.rating|string|tojson }},
+    "reviewCount": {{ reviews|length }}
   }{% endif %}
 }
 </script>
@@ -60,19 +60,19 @@
       "@type": "ListItem",
       "position": 1,
       "name": "Home",
-      "item": {{ request.url_root.rstrip('/')|tojson }}
+      "item": "https://www.belt-purse.com/"
     },
     {
       "@type": "ListItem",
       "position": 2,
       "name": "Products",
-      "item": {{ (request.url_root.rstrip('/') ~ url_for('products_page'))|tojson }}
+      "item": "https://www.belt-purse.com/products-page"
     },
     {
       "@type": "ListItem",
       "position": 3,
       "name": {{ product.name|tojson }},
-      "item": {{ request.url|tojson }}
+      "item": {{ ('https://www.belt-purse.com/product/' ~ product.id)|tojson }}
     }
   ]
 }
@@ -2086,8 +2086,8 @@ body {
     }
 
     .mobile-sticky-actions .btn-flat {
-        background: #fff !important;
-        color: #0A5C56 !important;
+        background: #0A5C56 !important;
+        color: #ffffff !important;
         border: 1px solid #0A5C56 !important;
     }
 
@@ -3611,8 +3611,11 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
 
             <div class="product-properties">
-                <div class="property-card">
-                    <strong>Color: <span id="selectedColorName">{{ product.product_colors[0].color.name if product.product_colors else 'Default' }}</span></strong>
+                <div class="property-card product-color-section">
+                    <strong class="color-row">
+                        <span class="color-title">Color:</span>
+                        <span id="selectedColorName" class="selected-color-name">{{ product.product_colors[0].color.name if product.product_colors else 'Default' }}</span>
+                    </strong>
                     <div class="color-list">
 {% for color in product.product_colors %}
 <span class="color-dot"
@@ -3626,7 +3629,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </div>
                 {% if product.requires_size %}
-                <div class="property-card">
+                <div class="property-card product-size-section">
                     <strong class="size-row-title">
                         <span>Size</span>
                         <button type="button" class="size-chart-link" onclick="openSizeChart()">

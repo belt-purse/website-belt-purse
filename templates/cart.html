@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="cart-container cart-page-container {% if products|length == 0 %}cart-is-empty{% endif %}" id="cartPageContainer">
+<div class="cart-container cart-page cart-page-container {% if products|length == 0 %}cart-is-empty{% endif %}" id="cartPageContainer">
 
     <h1 class="title" id="cartTitle" style="{% if products|length == 0 %}display:none{% endif %}">Your Shopping Cart</h1>
 
@@ -58,7 +58,7 @@
                     </div>
 
    <div class="actions cart-action-buttons">
-    <button class="removeBtn" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Remove</button>
+    <button class="removeBtn remove-btn cart-remove-btn cart-item-remove-btn" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Remove</button>
     <!-- Wishlist hidden temporarily - keep code for future use
     <button class="wishBtn" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Move to Wishlist</button>
     -->
@@ -92,8 +92,8 @@
     <label for="couponCode">Coupon Code</label>
     <div class="coupon-input-row">
         <input id="couponCode" type="text" placeholder="FIRST30 or FIRST50" autocomplete="off">
-        <button type="button" onclick="applyCoupon()">Apply</button>
-        <button type="button" class="coupon-remove-btn" onclick="removeCoupon()">Remove</button>
+        <button type="button" class="coupon-apply-btn cart-coupon-apply-btn" onclick="applyCoupon()">Apply</button>
+        <button type="button" class="coupon-remove-btn cart-coupon-remove-btn" onclick="removeCoupon()">Remove</button>
     </div>
     <p id="couponMessage" class="coupon-message"></p>
 </div>
@@ -478,7 +478,7 @@ function loadGuestCart() {
                         <button class="qty-btn plus" onclick="guestQtyChange(${itemProductId}, ${itemColorId || null}, ${itemSizeId || null}, 1, this)">+</button>
                     </div>
                     <div class="actions cart-action-buttons">
-                        <button class="removeBtn" onclick="guestRemoveCart(${itemProductId}, ${itemColorId || null}, ${itemSizeId || null})">Remove</button>
+                        <button class="removeBtn remove-btn cart-remove-btn cart-item-remove-btn" onclick="guestRemoveCart(${itemProductId}, ${itemColorId || null}, ${itemSizeId || null})">Remove</button>
                     </div>
                 </div>
             `;
@@ -1819,6 +1819,178 @@ function moveToWishlist(id, color = "", size = ""){
     .checkout-content #addressForm{
         grid-template-columns:1fr;
     }
+}
+
+body .cart-page .cart-item-remove-btn,
+body .cart-page button.cart-item-remove-btn,
+body button.cart-item-remove-btn {
+    background: #fff1f1 !important;
+    background-color: #fff1f1 !important;
+    background-image: none !important;
+    color: #d71920 !important;
+    border: 1px solid #ffd7d7 !important;
+    border-radius: 0 !important;
+    padding: 10px 16px !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+body .cart-page .cart-item-remove-btn:hover,
+body .cart-page button.cart-item-remove-btn:hover,
+body button.cart-item-remove-btn:hover {
+    background: #ffe6e6 !important;
+    background-color: #ffe6e6 !important;
+    color: #b90000 !important;
+    border-color: #ffc7c7 !important;
+}
+
+body .cart-page .cart-coupon-apply-btn,
+body .cart-page button.cart-coupon-apply-btn,
+body button.cart-coupon-apply-btn {
+    background: #0A5C56 !important;
+    background-color: #0A5C56 !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border: 1px solid #0A5C56 !important;
+    border-radius: 0 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+body .cart-page .cart-coupon-remove-btn,
+body .cart-page button.cart-coupon-remove-btn,
+body button.cart-coupon-remove-btn {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #0A5C56 !important;
+    border: 1px solid #0A5C56 !important;
+    border-radius: 0 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+body .cart-page .cart-coupon-remove-btn:hover,
+body .cart-page button.cart-coupon-remove-btn:hover,
+body button.cart-coupon-remove-btn:hover {
+    background: #f5fbfa !important;
+    background-color: #f5fbfa !important;
+    color: #083E3A !important;
+    border-color: #083E3A !important;
+}
+
+html body .cart-page.cart-page-container button.cart-item-remove-btn.removeBtn {
+    background: #fff1f1 !important;
+    background-color: #fff1f1 !important;
+    background-image: none !important;
+    color: #d71920 !important;
+    border: 1px solid #ffd7d7 !important;
+    border-radius: 0 !important;
+    padding: 10px 16px !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+html body .cart-page.cart-page-container button.cart-item-remove-btn.removeBtn:hover {
+    background: #ffe6e6 !important;
+    background-color: #ffe6e6 !important;
+    color: #b90000 !important;
+    border-color: #ffc7c7 !important;
+}
+
+html body .cart-page.cart-page-container .coupon-input-row button.cart-coupon-apply-btn.coupon-apply-btn {
+    background: #0A5C56 !important;
+    background-color: #0A5C56 !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border: 1px solid #0A5C56 !important;
+    border-radius: 0 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+html body .cart-page.cart-page-container .coupon-input-row button.cart-coupon-remove-btn.coupon-remove-btn {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #0A5C56 !important;
+    border: 1px solid #0A5C56 !important;
+    border-radius: 0 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+html body .cart-page.cart-page-container .coupon-input-row button.cart-coupon-remove-btn.coupon-remove-btn:hover {
+    background: #f5fbfa !important;
+    background-color: #f5fbfa !important;
+    color: #083E3A !important;
+    border-color: #083E3A !important;
+}
+
+html body #cartPageContainer button.cart-item-remove-btn {
+    background: #fff1f1 !important;
+    background-color: #fff1f1 !important;
+    background-image: none !important;
+    color: #d71920 !important;
+    border: 1px solid #ffd7d7 !important;
+    border-radius: 0 !important;
+    padding: 10px 16px !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+html body #cartPageContainer button.cart-item-remove-btn:hover {
+    background: #ffe6e6 !important;
+    background-color: #ffe6e6 !important;
+    color: #b90000 !important;
+    border-color: #ffc7c7 !important;
+}
+
+html body #cartPageContainer button.cart-coupon-apply-btn {
+    background: #0A5C56 !important;
+    background-color: #0A5C56 !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border: 1px solid #0A5C56 !important;
+    border-radius: 0 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+html body #cartPageContainer button.cart-coupon-remove-btn {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #0A5C56 !important;
+    border: 1px solid #0A5C56 !important;
+    border-radius: 0 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+html body #cartPageContainer button.cart-coupon-remove-btn:hover {
+    background: #f5fbfa !important;
+    background-color: #f5fbfa !important;
+    color: #083E3A !important;
+    border-color: #083E3A !important;
 }
 
 </style>

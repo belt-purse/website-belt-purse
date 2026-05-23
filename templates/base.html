@@ -20,21 +20,21 @@
     <meta name="keywords" content="belt purse store, leather belts, men's belts Madhya Pradesh, fashion accessories store, premium wallets India, belt shop near me, leather wallet, luxury wallet, mens belt">
     <meta name="author" content="Belt Purse Store">
     <meta name="robots" content="index, follow">
-    {% if canonical_url %}
-        <link rel="canonical" href="{{ canonical_url }}">
-    {% else %}
-        <link rel="canonical" href="{{ request.url_root.rstrip('/') }}{{ request.path }}">
-    {% endif %}
+    {% set seo_base_url = "https://www.belt-purse.com" %}
+    {% set seo_path = "/" if request.path == "/" else request.path %}
+    {% set page_canonical = canonical_url if canonical_url is defined and canonical_url else seo_base_url ~ seo_path %}
+    {% set seo_logo_url = seo_base_url ~ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg') %}
+    <link rel="canonical" href="{{ page_canonical }}">
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
     <meta property="og:title" content="{% block og_title %}Belt Purse Store | Premium Leather Belts & Accessories{% endblock %}">
     <meta property="og:description" content="{% block og_description %}Premium belt purse store. Shop leather belts, wallets & fashion accessories with quality craftsmanship.{% endblock %}">
-    <meta property="og:url" content="{{ canonical_url or (request.url_root.rstrip('/') ~ request.path) }}">
-    <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}{% endblock %}">
+    <meta property="og:url" content="{{ page_canonical }}">
+    <meta property="og:image" content="{% block og_image %}{{ seo_logo_url }}{% endblock %}">
     <meta property="og:locale" content="en_IN">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{% block twitter_title %}Belt Purse Store | Premium Leather Belts & Accessories{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}Premium belt purse store. Shop leather belts, wallets & fashion accessories.{% endblock %}">
-    <meta name="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}{{ seo_logo_url }}{% endblock %}">
 
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon_logo.jpeg') }}">
     <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/favicon_logo.jpeg') }}">
@@ -1944,6 +1944,7 @@ body::before {
         width: 44px !important;
         min-width: 44px;
         height: 44px;
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: flex-end;
@@ -1951,29 +1952,46 @@ body::before {
         transition: width 0.32s ease;
     }
 
+    .navbar .mobile-search-toggle {
+        display: none !important;
+    }
+
     .navbar .desktop-search.is-open {
-        width: 280px !important;
+        width: 360px !important;
+        height: 52px;
+        min-width: 360px;
+        padding: 0 44px 0 48px;
+        border: 1px solid #0A5C56;
+        background: rgba(0, 0, 0, 0.45);
+        box-sizing: border-box;
+        justify-content: flex-start;
     }
 
     .desktop-search-toggle,
     .desktop-search-close {
-        width: 44px;
-        height: 44px;
-        border: 1px solid rgba(255,255,255,0.16);
-        border-radius: 50%;
-        background: rgba(255,255,255,0.12);
+        width: auto;
+        height: auto;
+        min-width: 0;
+        min-height: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
         color: #fff;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        flex: 0 0 44px;
+        flex: 0 0 auto;
         padding: 0;
+        margin: 0;
+        box-shadow: none;
     }
 
     .desktop-search-toggle:hover,
     .desktop-search-close:hover {
-        background: rgba(255,255,255,0.2);
+        background: transparent;
+        border: 0;
+        box-shadow: none;
     }
 
     .navbar .desktop-search input,
@@ -1991,9 +2009,20 @@ body::before {
 
     .navbar .desktop-search.is-open input,
     .navbar .desktop-search.is-open input:focus {
-        width: 280px !important;
+        position: relative;
+        right: auto;
+        width: 100% !important;
+        min-width: 0;
+        height: 100%;
+        padding: 0;
+        margin: 0;
         opacity: 1;
         pointer-events: auto;
+        background: transparent;
+        border: 0;
+        outline: 0;
+        box-shadow: none;
+        color: #ffffff;
     }
 
     .navbar .desktop-search .desktop-search-toggle {
@@ -2003,28 +2032,32 @@ body::before {
 
     .navbar .desktop-search.is-open .desktop-search-toggle {
         position: absolute;
-        left: 0;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%) !important;
+        z-index: 3;
     }
 
     .desktop-search-close {
         position: absolute;
-        right: 0;
+        right: 14px;
+        top: 50%;
         z-index: 2;
         opacity: 0;
         pointer-events: none;
-        transform: scale(0.86);
+        transform: translateY(-50%) scale(0.86);
     }
 
     .navbar .desktop-search.is-open .desktop-search-close {
         opacity: 1;
         pointer-events: auto;
-        transform: scale(1);
+        transform: translateY(-50%) scale(1) !important;
     }
 
     .navbar .desktop-search .search-dropdown {
-        top: 52px;
+        top: 58px;
         right: 0;
-        width: 280px;
+        width: 360px;
     }
 
     .navbar .desktop-login-link {
@@ -2135,39 +2168,58 @@ body {
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Store",
-      "name": "Belt Purse Store",
-      "alternateName": "Belt Purse",
-      "description": "Premium belt purse store offering leather wallets, stylish belts, purses and fashion accessories with quality craftsmanship.",
-      "url": "https://www.belt-purse.com",
-      "logo": "{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}",
-      "image": "{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Indore",
-        "addressRegion": "Madhya Pradesh",
-        "addressCountry": "IN"
-      },
-      "geo": {
-        "@type": "GeoCoordinates",
-        "latitude": "22.7196",
-        "longitude": "75.8577"
-      },
-      "openingHoursSpecification": [
+      "@graph": [
         {
-          "@type": "OpeningHoursSpecification",
-          "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-          "opens": "10:00",
-          "closes": "20:00"
+          "@type": "WebSite",
+          "@id": "https://www.belt-purse.com/#website",
+          "name": "BeltPurse",
+          "url": "https://www.belt-purse.com/",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://www.belt-purse.com/api/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": ["Organization", "Store"],
+          "@id": "https://www.belt-purse.com/#store",
+          "name": "BeltPurse",
+          "alternateName": "Belt Purse Store",
+          "description": "Premium belt purse store offering leather wallets, stylish belts, purses and fashion accessories with quality craftsmanship.",
+          "url": "https://www.belt-purse.com/",
+          "logo": "{{ seo_logo_url }}",
+          "image": "{{ seo_logo_url }}",
+          "sameAs": [
+            "https://www.instagram.com/beltpurse.comm/"
+          ],
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Indore",
+            "addressRegion": "Madhya Pradesh",
+            "addressCountry": "IN"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": "22.7196",
+            "longitude": "75.8577"
+          },
+          "openingHoursSpecification": [
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+              "opens": "10:00",
+              "closes": "20:00"
+            }
+          ],
+          "priceRange": "INR",
+          "paymentAccepted": ["Cash", "Credit Card", "UPI", "Online Payment"],
+          "currenciesAccepted": "INR",
+          "areaServed": {
+            "@type": "City",
+            "name": "Indore"
+          }
         }
-      ],
-      "priceRange": "INR",
-      "paymentAccepted": ["Cash", "Credit Card", "UPI", "Online Payment"],
-      "currenciesAccepted": "INR",
-      "areaServed": {
-        "@type": "City",
-        "name": "Indore"
-      }
+      ]
     }
     </script>
     {% block extra_head %}{% endblock %}
@@ -2305,13 +2357,13 @@ body {
     <div class="nav-right" id="navRight">
 
         <!-- 🔍 MOBILE SEARCH ICON -->
-        <div class="mobile-search-toggle icon-box premium-icon" onclick="toggleMobileSearch()">
+        <div class="mobile-search-toggle icon-box premium-icon search-toggle" onclick="toggleMobileSearch()">
             <i class="fa-solid fa-magnifying-glass"></i>
         </div>
 
         <!-- 🔍 SEARCH -->
         <div class="search-bar desktop-search" id="desktopSearchBar" style="position:relative;">
-            <button type="button" class="desktop-search-toggle" aria-label="Open search">
+            <button type="button" class="desktop-search-toggle search-toggle" aria-label="Open search">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
             <input 
@@ -2366,10 +2418,10 @@ body {
     <div class="footer-col brand-info footer-about">
       <h3>About Us</h3>
       <p>
-        Premium belts and wallets crafted for everyday style, comfort, and long-lasting quality.
+       Premium belts & accessories crafted with timeless style, comfort, and durability since 1992. At Belt Purse, we focus on quality craftsmanship and modern designs made for everyday elegance.
       </p>
       <div class="social-icons">
-        <a href="https://www.instagram.com/beltpurse.comm?igsh=MTI5cGlmOTVoZGN4cA==" target="_blank" class="insta" aria-label="Instagram">
+        <a href="https://www.instagram.com/beltpurse.comm/" target="_blank" class="insta" aria-label="Instagram">
           <i class="fa-brands fa-instagram"></i>
         </a>
         <a href="https://wa.me/917000747936" target="_blank" class="whatsapp" aria-label="WhatsApp">
@@ -2566,18 +2618,18 @@ button:hover,
 }
 
 .featured-explore-btn:hover {
-    background: linear-gradient(135deg, #0A5C56, #083E3A) !important;
+    background: #083E3A !important;
     box-shadow: none !important;
 }
 
 .about-btn:hover,
 .primary-btn:hover,
 .contact-form button:hover {
-    background: linear-gradient(135deg, #0A5C56, #083E3A) !important;
+    background: #083E3A !important;
 }
 
 .hero-btn:hover {
-    background: #ffffff !important;
+    background: #083E3A !important;
 }
 
 .nav-center a:hover,
@@ -3056,9 +3108,9 @@ section {
 }
 
 .update-home-page .footer-newsletter-form button {
-    background: #ffffff !important;
-    border-color: #ffffff !important;
-    color: #083E3A !important;
+    background: #0A5C56 !important;
+    border-color: #0A5C56 !important;
+    color: #ffffff !important;
 }
 
 .product-card,
@@ -3247,6 +3299,31 @@ a:hover,
     transform: none !important;
     transition: none !important;
 }
+
+@media (min-width: 992px) {
+    .navbar #desktopSearchBar.is-open .desktop-search-toggle {
+        left: 16px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+
+    .navbar #desktopSearchBar.is-open .desktop-search-close {
+        right: 14px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+}
+
 </style>
 
 </body>

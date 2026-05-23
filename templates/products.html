@@ -1,6 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Premium Belt Collection | Belt Purse Store{% endblock %}
 {% block meta_description %}Shop premium leather belts, wallets and fashion accessories from Belt Purse Store. Browse quality designs with online ordering across India.{% endblock %}
+{% set active_category = (request.args.get('category') or '')|lower %}
+{% set collection_name = 'Belts' if active_category == 'belt' else ('Wallets' if active_category == 'wallet' else 'Products') %}
+{% set collection_url = 'https://www.belt-purse.com/products-page' %}
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://www.belt-purse.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": {{ collection_name|tojson }},
+      "item": {{ collection_url|tojson }}
+    }
+  ]
+}
+</script>
+{% endblock %}
 {% block content %}
 <style>
 /* ===== FIX TOP SPACE (NAVBAR GAP) ===== */
@@ -48,6 +73,22 @@
     margin-top: 3px;
     font-size: 14px;
     line-height: 1.4;
+}
+
+.seo-breadcrumb {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 13px;
+    color: #083E3A;
+    margin-bottom: 8px;
+}
+
+.seo-breadcrumb a {
+    color: #0A5C56;
+    text-decoration: none;
+}
+
+.seo-breadcrumb span {
+    color: #111;
 }
 
 /* ===== HEADER LAYOUT ===== */
@@ -581,10 +622,15 @@
 </style>
 
 <div class="products-page">
+    <nav class="seo-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a> <span>/</span>
+        <span>{{ collection_name }}</span>
+    </nav>
+
     <div class="products-header">
         <div class="products-title">
             <span class="eyebrow">Premium Collection</span>
-            <h2>All Products</h2>
+            <h2>{{ collection_name if collection_name != 'Products' else 'All Products' }}</h2>
             <!-- Wishlist hidden temporarily - keep code for future use
             <p class="subtitle">Shop curated products directly from the backend with real-time pricing, offers, and wishlist support.</p>
             -->

@@ -92,7 +92,7 @@ body
 -->
 {% extends "base.html" %}
 {% block title %}Latest Belt & Fashion Accessory Articles | Belt Purse Store{% endblock %}
-{% block meta_description %}Read Belt Purse Store articles about premium leather belts, wallets, purses and fashion accessories for shoppers in Indore and across India.{% endblock %}
+{% block meta_description %}Read Belt Purse Store articles about premium leather belts, wallets, purses and fashion accessories for shoppers and across India.{% endblock %}
 {% block content %}
 
 <style>
@@ -186,12 +186,42 @@ body
     }
 
     /* ===== Recent Blogs ===== */
-    .section-title {
-        font-size: 42px;
-        text-align: center;
-        margin-top: 0;
-        margin-bottom: 24px;
-        color: #222;
+    .blog-page-header,
+    .blog-header {
+        max-width: 1120px;
+        margin: 0 auto 34px !important;
+        text-align: left !important;
+        padding: 0 !important;
+    }
+
+    .blog-page-header span,
+    .blog-header span {
+        display: block;
+        font-size: 13px;
+        letter-spacing: 1px;
+        color: #0A5C56;
+        margin-bottom: 10px;
+        font-weight: 400;
+    }
+
+    .blog-page-header h1,
+    .blog-header h1 {
+        font-family: 'Jost', sans-serif !important;
+        font-size: 48px;
+        line-height: 1.1;
+        font-weight: 400;
+        color: #111;
+        margin: 0 0 14px !important;
+    }
+
+    .blog-page-header p,
+    .blog-header p {
+        font-family: 'Jost', sans-serif !important;
+        font-size: 16px;
+        line-height: 1.6;
+        color: #333;
+        margin: 0 !important;
+        max-width: 680px;
     }
 
     .blog-grid {
@@ -311,11 +341,19 @@ body
             font-size: 30px;
         }
 
-        .section-title {
-            font-size: 20px;
-            line-height: 1.1;
-            margin-top: 0;
-            margin-bottom: 8px;
+        .blog-page-header,
+        .blog-header {
+            margin-bottom: 24px !important;
+        }
+
+        .blog-page-header h1,
+        .blog-header h1 {
+            font-size: 34px;
+        }
+
+        .blog-page-header p,
+        .blog-header p {
+            font-size: 14px;
         }
 
         .blog-grid {
@@ -392,7 +430,11 @@ body
 
 <div class="blogs-container">
     <!-- Recent Blogs -->
-    <h2 class="section-title">Recent Blog Posts</h2>
+    <div class="blog-page-header blog-header">
+        <span>Premium Reads</span>
+        <h1>Latest Insights</h1>
+        <p>Explore style tips, fashion trends, and premium accessory guides.</p>
+    </div>
 
     <div class="blog-grid">
         {% for b in blogs %}
@@ -425,5 +467,4 @@ body
 </div>
 
 {% endblock %}
-
 

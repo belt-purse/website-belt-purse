@@ -3,6 +3,57 @@
 {% block title %}Belt Purse Store | Premium Leather Belts & Accessories{% endblock %}
 {% block meta_description %}Belt Purse Store offers premium leather belts, wallets & fashion accessories. Quality craftsmanship, affordable prices. Shop online.{% endblock %}
 
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How do I care for a leather belt?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Keep your leather belt dry, wipe it gently with a soft cloth, and store it away from direct sunlight. Use a leather conditioner occasionally to help maintain the finish."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How long does shipping take?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Shipping timelines depend on the delivery location. Orders are processed and shipped as quickly as possible after checkout."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the return policy?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Return details are available on the BeltPurse return policy page. Please review the policy before placing or returning an order."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do you offer wallets and accessories?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, BeltPurse offers wallets and fashion accessories along with premium belts."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Are BeltPurse products suitable for gifting?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, BeltPurse belts, wallets, and accessories are suitable for everyday gifting and personal use."
+      }
+    }
+  ]
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <section class="hero update-hero">
     <h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Belt Purse Store - Premium Leather Belts & Fashion Accessories</h1>
@@ -24,7 +75,8 @@
             <div class="hero-overlay"></div>
             <div class="hero-content">
                 <span class="hero-tagline">{{ slide.button_text or 'Upgrade Your Everyday Style' }}</span>
-                <h2>{{ slide.title or 'Premium Belt Collection' }}</h2>
+                {% set slide_heading = slide.title or ('Premium Belt Collection' if loop.first else 'Featured Belt Styles') %}
+                <h2>{{ 'Featured Belt Styles' if slide_heading == 'Premium Belt Collection' and not loop.first else slide_heading }}</h2>
                 <p>{{ slide.subtitle or 'Premium belts crafted for everyday style' }}</p>
                 <a href="{{ slide.button_link or '/products-page' }}" class="hero-btn">{{ slide.button_text or 'Explore Collection' }}</a>
             </div>
@@ -42,7 +94,7 @@
 <section class="products featured-collection update-products update-trending-section">
     <div class="section-heading featured-header">
         <span>TRENDING COLLECTION</span>
-        <h2>Trending Collection</h2>
+        <h2>Luxury Essentials For Daily Wear</h2>
     </div>
 
     <div class="collection-group">
@@ -88,7 +140,7 @@
 <section class="portrait-video-section">
     <div class="section-heading video-section-heading">
         <span>INSIDE THE COLLECTION</span>
-        <h2>Crafted For Everyday Style</h2>
+        <h2>Timeless Designs, Everyday Comfort</h2>
     </div>
 
     <div class="portrait-video-grid">
@@ -111,26 +163,26 @@
 <section class="services section-space update-services" id="services">
     <div class="section-heading">
         <span>FEATURED SERVICES</span>
-        <h2>Our Service</h2>
+        <h2>Services You Can Trust</h2>
     </div>
 
     <div class="service-grid">
         <div class="service-card">
             <div class="service-icon"><i class="fa-solid fa-truck-fast"></i></div>
-            <h3>Free Shipping Across India</h3>
-            <p>Fast and reliable doorstep delivery.</p>
+            <h3>Free Shipping</h3>
+            <p>Fast doorstep delivery across India.</p>
         </div>
 
         <div class="service-card">
             <div class="service-icon"><i class="fa-solid fa-shield-halved"></i></div>
             <h3>2-Year Warranty</h3>
-            <p>Trusted support on leather products.</p>
+            <p>Trusted protection for leather products.</p>
         </div>
 
         <div class="service-card">
             <div class="service-icon"><i class="fa-solid fa-gem"></i></div>
             <h3>Premium Quality</h3>
-            <p>Fine materials made for daily use.</p>
+            <p>Fine materials crafted for daily use.</p>
         </div>
 
         <div class="service-card">
