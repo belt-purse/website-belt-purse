@@ -14,10 +14,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <title>{% block title %}Belt Purse Store Indore | Premium Leather Belts & Accessories{% endblock %}</title>
+    <title>{% block title %}Belt Purse Store | Premium Leather Belts & Accessories{% endblock %}</title>
 
-    <meta name="description" content="{% block meta_description %}Belt Purse Store in Indore offers premium leather belts, wallets & fashion accessories. Quality craftsmanship, affordable prices. Shop online or visit us in Madhya Pradesh.{% endblock %}">
-    <meta name="keywords" content="belt purse store, leather belts Indore, men's belts Madhya Pradesh, fashion accessories store, premium wallets India, belt shop near me, leather wallet, luxury wallet, women's purse, handbag">
+    <meta name="description" content="{% block meta_description %}Belt Purse Store offers premium leather belts, wallets & fashion accessories. Quality craftsmanship, affordable prices. Shop online.{% endblock %}">
+    <meta name="keywords" content="belt purse store, leather belts, men's belts Madhya Pradesh, fashion accessories store, premium wallets India, belt shop near me, leather wallet, luxury wallet, mens belt">
     <meta name="author" content="Belt Purse Store">
     <meta name="robots" content="index, follow">
     {% if canonical_url %}
@@ -26,14 +26,14 @@
         <link rel="canonical" href="{{ request.url_root.rstrip('/') }}{{ request.path }}">
     {% endif %}
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
-    <meta property="og:title" content="{% block og_title %}Belt Purse Store Indore | Premium Leather Belts & Accessories{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}Premium belt purse store in Indore. Shop leather belts, wallets & fashion accessories with quality craftsmanship.{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}Belt Purse Store | Premium Leather Belts & Accessories{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Premium belt purse store. Shop leather belts, wallets & fashion accessories with quality craftsmanship.{% endblock %}">
     <meta property="og:url" content="{{ canonical_url or (request.url_root.rstrip('/') ~ request.path) }}">
     <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}{% endblock %}">
     <meta property="og:locale" content="en_IN">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{% block twitter_title %}Belt Purse Store Indore | Premium Leather Belts{% endblock %}">
-    <meta name="twitter:description" content="{% block twitter_description %}Premium belt purse store in Indore. Shop leather belts, wallets & fashion accessories.{% endblock %}">
+    <meta name="twitter:title" content="{% block twitter_title %}Belt Purse Store | Premium Leather Belts & Accessories{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Premium belt purse store. Shop leather belts, wallets & fashion accessories.{% endblock %}">
     <meta name="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}{% endblock %}">
 
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon_logo.jpeg') }}">
@@ -2138,7 +2138,7 @@ body {
       "@type": "Store",
       "name": "Belt Purse Store",
       "alternateName": "Belt Purse",
-      "description": "Premium belt purse store in Indore offering leather wallets, stylish belts, purses and fashion accessories with quality craftsmanship.",
+      "description": "Premium belt purse store offering leather wallets, stylish belts, purses and fashion accessories with quality craftsmanship.",
       "url": "https://www.belt-purse.com",
       "logo": "{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}",
       "image": "{{ url_for('static', filename='images/BP_Logo_full-01.jpg.jpeg', _external=True) }}",

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}{{ product.name }} | Belt Purse Store Indore{% endblock %}
-{% block meta_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store Indore')) | striptags | truncate(155, True) }}{% endblock %}
+{% block title %}{{ product.name }} | Belt Purse Store{% endblock %}
+{% block meta_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store')) | striptags | truncate(155, True) }}{% endblock %}
 {% block og_type %}product{% endblock %}
-{% block og_title %}{{ product.name }} | Belt Purse Store Indore{% endblock %}
-{% block og_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store Indore')) | striptags | truncate(155, True) }}{% endblock %}
+{% block og_title %}{{ product.name }} | Belt Purse Store{% endblock %}
+{% block og_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store')) | striptags | truncate(155, True) }}{% endblock %}
 {% if images|length > 0 %}
     {% set primary_product_image = images[0].image_url %}
 {% else %}
@@ -16,8 +16,8 @@
     {% set primary_product_image_url = request.url_root.rstrip('/') ~ primary_product_image %}
 {% endif %}
 {% block og_image %}{{ primary_product_image_url }}{% endblock %}
-{% block twitter_title %}{{ product.name }} | Belt Purse Store Indore{% endblock %}
-{% block twitter_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store Indore')) | striptags | truncate(155, True) }}{% endblock %}
+{% block twitter_title %}{{ product.name }} | Belt Purse Store{% endblock %}
+{% block twitter_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store')) | striptags | truncate(155, True) }}{% endblock %}
 {% block twitter_image %}{{ primary_product_image_url }}{% endblock %}
 
 {% block extra_head %}
@@ -41,7 +41,7 @@
     "availability": "https://schema.org/InStock",
     "seller": {
       "@type": "Store",
-      "name": "Belt Purse Store Indore"
+      "name": "Belt Purse Store"
     }
   }{% if product.rating or reviews|length > 0 %},
   "aggregateRating": {
@@ -3485,7 +3485,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <!-- 🔥 ONLY THIS WILL CHANGE -->
 <div id="detailMainMedia">
     {% if images|length > 0 %}
-        <img id="mainImage" src="{{ images[0].image_url }}" alt="{{ product.name }} - premium {{ product.product_type or 'accessory' }} from Belt Purse Store Indore" draggable="false">
+        <img id="mainImage" src="{{ images[0].image_url }}" alt="{{ product.name }} - premium {{ product.product_type or 'accessory' }} from Belt Purse Store" draggable="false">
     {% elif videos|length > 0 %}
         <video controls src="{{ videos[0].video_url }}" draggable="false"></video>
     {% endif %}
@@ -3497,7 +3497,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     {% for img in images %} 
         <button type="button" onclick="goToGallerySlide({{ loop.index0 }})">
-            <img src="{{ img.image_url }}" alt="{{ product.name }} thumbnail {{ loop.index }} - Belt Purse Store Indore">
+            <img src="{{ img.image_url }}" alt="{{ product.name }} thumbnail {{ loop.index }} - Belt Purse Store">
         </button>
     {% endfor %}
 
@@ -3552,14 +3552,15 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             <div class="tax-note">Incl. of all taxes</div>
 
+            {% if product_page_coupons %}
             <div class="product-offers-box">
+                {% for coupon in product_page_coupons %}
                 <div class="product-offer-row">
-                    <span>Rs.30 OFF First Order &middot; Code FIRST30</span>
+                    <span>{{ coupon.display_text }}</span>
                 </div>
-                <div class="product-offer-row">
-                    <span>Rs.50 OFF Above 1499 &middot; Code FIRST50</span>
-                </div>
+                {% endfor %}
             </div>
+            {% endif %}
 
             <p class="product-short">{{ product.description[:220] }}{% if product.description|length > 220 %}...{% endif %}</p>
 
@@ -3667,19 +3668,14 @@ document.addEventListener("DOMContentLoaded", () => {
         <details class="detail-row">
             <summary>Composition and Care</summary>
             <div class="detail-row-content">
-                <p>{{ product.material or 'Premium leather' }}</p>
-                <p>Wipe gently with a soft dry cloth. Keep away from excessive moisture and store flat or rolled loosely when not in use.</p>
+                <p>{{ product.composition_care or 'Composition and care details will be updated soon.' }}</p>
             </div>
         </details>
 
         <details class="detail-row">
             <summary>Additional Details</summary>
             <div class="detail-row-content">
-                <p>SKU: {{ (product.product_type or 'belt')|title ~ '-' ~ product.id }}</p>
-                <p>Warranty: {{ product.guarantee or '2 Year Warranty' }}</p>
-                {% if tags %}
-                    <p>Category: {{ tags[0].tag }}</p>
-                {% endif %}
+                <p>{{ product.additional_details or 'Additional product details will be updated soon.' }}</p>
             </div>
         </details>
     </div>

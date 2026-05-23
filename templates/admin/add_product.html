@@ -90,6 +90,16 @@
                     <label>Product Description</label>
                     <textarea name="description" rows="5" placeholder="Write detailed product description">{{ form_data.get('description', '') }}</textarea>
                 </div>
+
+                <div class="form-group">
+                    <label>Composition and Care</label>
+                    <textarea name="composition_care" rows="4" placeholder="Add composition and care details">{{ form_data.get('composition_care', '') }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Additional Details</label>
+                    <textarea name="additional_details" rows="4" placeholder="Add additional product details">{{ form_data.get('additional_details', '') }}</textarea>
+                </div>
             </div>
 
             <!-- SIZE -->

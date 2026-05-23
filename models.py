@@ -71,6 +71,8 @@ class Product(db.Model):
     guarantee = db.Column(db.String(100))
     material = db.Column(db.String(255))
     description = db.Column(db.Text)
+    composition_care = db.Column(db.Text, nullable=True)
+    additional_details = db.Column(db.Text, nullable=True)
 
     product_type = db.Column(db.String(50), default="belt")
     requires_size = db.Column(db.Boolean, default=True)
@@ -226,6 +228,8 @@ class Coupon(db.Model):
     used_count = db.Column(db.Integer, default=0)
     per_user_limit = db.Column(db.Integer, default=1)
     first_order_only = db.Column(db.Boolean, default=False)
+    show_on_product_page = db.Column(db.Boolean, default=False)
+    product_page_priority = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

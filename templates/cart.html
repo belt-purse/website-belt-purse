@@ -100,7 +100,7 @@
 
 <div class="summary-row" id="couponDiscountRow" style="display:none;">
     <span>Coupon Discount</span>
-    <span id="couponDiscount">- â‚¹0</span>
+    <span id="couponDiscount">- ₹0</span>
 </div>
 
 <div class="summary-row total">
@@ -785,11 +785,11 @@ function loadCheckoutReview(){
             ${Number(data.discount_amount || 0) > 0 ? `
             <div class="review-total-row">
                 <span>Coupon (${data.coupon_code}):</span>
-                <span>- â‚¹${data.discount_amount}</span>
+                <span>- ₹${data.discount_amount}</span>
             </div>` : ""}
             <div class="review-total-row">
                 <span>Total:</span>
-                <span>â‚¹${data.final_amount ?? data.total}</span>
+                <span>₹${data.final_amount ?? data.total}</span>
             </div>
         </div>
         `;

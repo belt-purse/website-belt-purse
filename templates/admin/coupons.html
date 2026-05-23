@@ -27,6 +27,7 @@
                     <th>Validity</th>
                     <th>Usage</th>
                     <th>Status</th>
+                    <th>Product Page</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -68,6 +69,12 @@
                         {% if coupon.first_order_only %}<small>First order only</small>{% endif %}
                     </td>
                     <td>
+                        <span class="coupon-status {{ 'active' if coupon.show_on_product_page else 'inactive' }}">
+                            {{ 'Shown' if coupon.show_on_product_page else 'Hidden' }}
+                        </span>
+                        <small>Priority: {{ coupon.product_page_priority or 0 }}</small>
+                    </td>
+                    <td>
                         <div class="coupon-actions">
                             <a href="{{ url_for('admin_edit_coupon', coupon_id=coupon.id) }}">Edit</a>
                             <a href="{{ url_for('admin_toggle_coupon', coupon_id=coupon.id) }}">{{ 'Deactivate' if coupon.is_active else 'Activate' }}</a>
@@ -77,7 +84,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="coupon-empty">No coupons yet.</td>
+                    <td colspan="7" class="coupon-empty">No coupons yet.</td>
                 </tr>
                 {% endfor %}
             </tbody>

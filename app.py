@@ -159,6 +159,8 @@ def ensure_live_db_columns():
     ensure_column_exists("products", "is_archived", "is_archived BOOLEAN DEFAULT FALSE")
     ensure_column_exists("products", "product_type", "product_type VARCHAR(50) DEFAULT 'belt'")
     ensure_column_exists("products", "requires_size", "requires_size BOOLEAN DEFAULT TRUE")
+    ensure_column_exists("products", "composition_care", "composition_care TEXT")
+    ensure_column_exists("products", "additional_details", "additional_details TEXT")
     ensure_column_exists("colors", "hex_code", "hex_code VARCHAR(20)")
     ensure_column_exists("blog", "blog_date", "blog_date DATE")
     ensure_column_exists("orders", "coupon_code", "coupon_code VARCHAR(50)")
@@ -174,6 +176,8 @@ def ensure_live_db_columns():
     ensure_column_exists("coupons", "usage_limit", "usage_limit INTEGER")
     ensure_column_exists("coupons", "used_count", "used_count INTEGER DEFAULT 0")
     ensure_column_exists("coupons", "per_user_limit", "per_user_limit INTEGER DEFAULT 1")
+    ensure_column_exists("coupons", "show_on_product_page", "show_on_product_page BOOLEAN DEFAULT FALSE")
+    ensure_column_exists("coupons", "product_page_priority", "product_page_priority INTEGER DEFAULT 0")
     ensure_column_exists("coupons", "updated_at", "updated_at TIMESTAMP WITHOUT TIME ZONE", "updated_at DATETIME")
     ensure_column_exists("homepage_media", "media_type", "media_type VARCHAR(30)")
     ensure_column_exists("homepage_media", "title", "title VARCHAR(255)")
@@ -269,6 +273,8 @@ def ensure_default_coupons():
             "min_order_amount": None,
             "first_order_only": True,
             "per_user_limit": 1,
+            "show_on_product_page": True,
+            "product_page_priority": 100,
         },
         {
             "code": "FIRST50",
@@ -278,6 +284,8 @@ def ensure_default_coupons():
             "min_order_amount": 1499,
             "first_order_only": False,
             "per_user_limit": 1,
+            "show_on_product_page": True,
+            "product_page_priority": 50,
         },
     ]
 
@@ -292,6 +300,8 @@ def ensure_default_coupons():
             coupon.min_order_amount = coupon_data["min_order_amount"]
             coupon.first_order_only = coupon_data["first_order_only"]
             coupon.per_user_limit = coupon_data["per_user_limit"]
+            coupon.show_on_product_page = coupon_data["show_on_product_page"]
+            coupon.product_page_priority = coupon_data["product_page_priority"]
             coupon.is_active = True
             coupon.updated_at = datetime.utcnow()
         elif not coupon.discount_value:
@@ -299,6 +309,10 @@ def ensure_default_coupons():
             coupon.discount_value = coupon_data["discount_value"]
             coupon.min_order_amount = coupon.min_order_amount if coupon.min_order_amount is not None else coupon_data["min_order_amount"]
             coupon.per_user_limit = coupon.per_user_limit if coupon.per_user_limit is not None else coupon_data["per_user_limit"]
+            if coupon.show_on_product_page is None:
+                coupon.show_on_product_page = coupon_data["show_on_product_page"]
+            if coupon.product_page_priority is None:
+                coupon.product_page_priority = coupon_data["product_page_priority"]
 
     db.session.commit()
 
@@ -854,6 +868,83 @@ def validate_coupon_for_user(user, coupon_code, subtotal, shipping_amount=0):
         "final_amount": final_amount,
         "message": f"{coupon.title} applied",
     }
+
+
+def product_page_coupon_condition(coupon):
+    title = (coupon.title or "").strip()
+    discount_value = int(coupon.discount_value or 0)
+    discount_type = (coupon.discount_type or "fixed").lower()
+
+    if title:
+        fixed_prefix = f"Rs.{discount_value} OFF "
+        percent_prefix = f"{discount_value}% OFF "
+        if title.lower().startswith(fixed_prefix.lower()):
+            return title[len(fixed_prefix):].strip()
+        if title.lower().startswith(percent_prefix.lower()):
+            return title[len(percent_prefix):].strip()
+        return title
+
+    if coupon.min_order_amount:
+        return f"Above {int(coupon.min_order_amount)}"
+
+    return "Offer"
+
+
+def product_page_coupon_display_text(coupon):
+    code = (coupon.code or "").strip().upper()
+    discount_type = (coupon.discount_type or "fixed").lower()
+    discount_value = int(coupon.discount_value or 0)
+
+    if discount_type == "percent":
+        if coupon.max_discount_amount:
+            return f"{discount_value}% OFF up to Rs.{int(coupon.max_discount_amount)} · Code {code}"
+        return f"{discount_value}% OFF {product_page_coupon_condition(coupon)} · Code {code}"
+
+    return f"Rs.{discount_value} OFF {product_page_coupon_condition(coupon)} · Code {code}"
+
+
+def get_product_page_coupons(user):
+    today = date.today()
+    query = Coupon.query.filter(
+        Coupon.is_active == True,
+        Coupon.show_on_product_page == True,
+        db.or_(Coupon.valid_from.is_(None), Coupon.valid_from <= today),
+        db.or_(Coupon.valid_until.is_(None), Coupon.valid_until >= today),
+    ).order_by(
+        Coupon.product_page_priority.desc(),
+        Coupon.created_at.desc(),
+        Coupon.id.desc(),
+    )
+
+    has_successful_order = user.is_authenticated and user_has_successful_order(user.id)
+    eligible = []
+    first30 = None
+
+    for coupon in query.all():
+        code = (coupon.code or "").strip().upper()
+        if code == "FIRST30" and has_successful_order:
+            continue
+
+        usage_count = max(int(coupon.used_count or 0), coupon_usage_count(coupon.id))
+        if coupon.usage_limit is not None and usage_count >= int(coupon.usage_limit):
+            continue
+
+        coupon.display_text = product_page_coupon_display_text(coupon)
+        if code == "FIRST30":
+            first30 = coupon
+        else:
+            eligible.append(coupon)
+
+    product_page_coupons = []
+    if first30:
+        product_page_coupons.append(first30)
+
+    for coupon in eligible:
+        if len(product_page_coupons) >= 2:
+            break
+        product_page_coupons.append(coupon)
+
+    return product_page_coupons
 
 
 def current_coupon_code():
@@ -1795,6 +1886,8 @@ def add_product():
         guarantee = request.form.get("guarantee")
         material = request.form.get("material")
         description = request.form.get("description")
+        composition_care = request.form.get("composition_care")
+        additional_details = request.form.get("additional_details")
 
         original_price = float(request.form.get("original_price", 0))
         discount_percent = float(request.form.get("discount_percent", 0))
@@ -1815,7 +1908,9 @@ def add_product():
             offer=f"{discount_percent}% OFF" if discount_percent > 0 else None,
             guarantee=guarantee,
             material=material,
-            description=description
+            description=description,
+            composition_care=composition_care,
+            additional_details=additional_details
         )
 
         db.session.add(product)
@@ -1990,6 +2085,8 @@ def edit_product(id):
         product.guarantee = request.form.get("guarantee")
         product.material = request.form.get("material")
         product.description = request.form.get("description")
+        product.composition_care = request.form.get("composition_care")
+        product.additional_details = request.form.get("additional_details")
         product.size_unit = request.form.get("size_unit", "inch") if settings["requires_size"] else None
 
         # =========================
@@ -2583,6 +2680,8 @@ def coupon_form_payload():
         "usage_limit": parse_optional_int(request.form.get("usage_limit")),
         "per_user_limit": per_user_limit,
         "first_order_only": bool(request.form.get("first_order_only")),
+        "show_on_product_page": bool(request.form.get("show_on_product_page")),
+        "product_page_priority": parse_optional_int(request.form.get("product_page_priority")) or 0,
         "is_active": bool(request.form.get("is_active")),
     }
 
@@ -2599,6 +2698,8 @@ def apply_coupon_payload(coupon, payload):
     coupon.usage_limit = payload["usage_limit"]
     coupon.per_user_limit = payload["per_user_limit"]
     coupon.first_order_only = payload["first_order_only"]
+    coupon.show_on_product_page = payload["show_on_product_page"]
+    coupon.product_page_priority = payload["product_page_priority"]
     coupon.is_active = payload["is_active"]
     coupon.updated_at = datetime.utcnow()
 
@@ -3847,6 +3948,7 @@ def product_detail(id):
 ).limit(4).all()
     reviews = Review.query.options(joinedload(Review.user))\
        .filter_by(product_id=id).all()
+    product_page_coupons = get_product_page_coupons(current_user)
 
     return render_template(
         "product.html",
@@ -3857,6 +3959,7 @@ def product_detail(id):
         tags=tags,
         sizes=sizes,
         colors=colors,
+        product_page_coupons=product_page_coupons,
         related_products=related_products
     )
 

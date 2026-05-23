@@ -78,6 +78,11 @@
                 <span>Per User Limit</span>
                 <input type="number" min="0" name="per_user_limit" value="{{ field_value('per_user_limit', coupon.per_user_limit if coupon and coupon.per_user_limit is not none else 1) }}">
             </label>
+
+            <label>
+                <span>Product Page Priority (higher shows first)</span>
+                <input type="number" name="product_page_priority" value="{{ field_value('product_page_priority', coupon.product_page_priority if coupon and coupon.product_page_priority is not none else 0) }}">
+            </label>
         </div>
 
         <div class="coupon-checks">
@@ -88,6 +93,10 @@
             <label>
                 <input type="checkbox" name="is_active" {% if form_data and form_data.get('is_active') or (not form_data and (not coupon or coupon.is_active)) %}checked{% endif %}>
                 <span>Active</span>
+            </label>
+            <label>
+                <input type="checkbox" name="show_on_product_page" {% if form_data and form_data.get('show_on_product_page') or (not form_data and coupon and coupon.show_on_product_page) %}checked{% endif %}>
+                <span>Show on Product Page</span>
             </label>
         </div>
 

@@ -139,6 +139,24 @@
                         placeholder="Write detailed product description"
                     >{{ form_data.get('description', product.description or '') }}</textarea>
                 </div>
+
+                <div class="form-group">
+                    <label>Composition and Care</label>
+                    <textarea
+                        name="composition_care"
+                        rows="4"
+                        placeholder="Add composition and care details"
+                    >{{ form_data.get('composition_care', product.composition_care or '') }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Additional Details</label>
+                    <textarea
+                        name="additional_details"
+                        rows="4"
+                        placeholder="Add additional product details"
+                    >{{ form_data.get('additional_details', product.additional_details or '') }}</textarea>
+                </div>
             </div>
 
             {% if requires_size %}
