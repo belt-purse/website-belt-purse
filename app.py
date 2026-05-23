@@ -2230,26 +2230,27 @@ def edit_product(id):
         # =========================
         # SIZES
         # =========================
-        if settings["requires_size"]:
+        # NOTE: Only update sizes if the sizes field was actually submitted.
+        # This prevents accidentally deleting sizes when editing other fields
+        # like description, composition_care, additional_details, etc.
+        if settings["requires_size"] and sizes_text is not None:
             existing_sizes = ProductSize.query.filter_by(product_id=id).all()
             old_labels = ",".join([s.size_label for s in existing_sizes])
             if sizes_text != old_labels:
+                # Only clear cart if sizes actually changed
                 Cart.query.filter_by(product_id=id).delete()
-
-            ProductSize.query.filter_by(product_id=id).delete()
-
-            if sizes_text:
-                for s in sizes_text.split(","):
-                    s = s.strip()
-                    if s:
-                        db.session.add(ProductSize(
-                            product_id=id,
-                            size_label=s,
-                            size_value=float(s)
-                        ))
-        else:
-            Cart.query.filter_by(product_id=id).update({"size_id": None})
-            ProductSize.query.filter_by(product_id=id).delete()
+                # Delete and recreate sizes only when changed
+                ProductSize.query.filter_by(product_id=id).delete()
+                if sizes_text:
+                    for s in sizes_text.split(","):
+                        s = s.strip()
+                        if s:
+                            db.session.add(ProductSize(
+                                product_id=id,
+                                size_label=s,
+                                size_value=float(s)
+                            ))
+        # If sizes_text is None, keep existing sizes unchanged
 
         # =========================
         # TAGS
