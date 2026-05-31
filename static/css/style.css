@@ -3860,11 +3860,8 @@ body *:not(i):not(.fa):not(.fa-solid):not(.fa-regular):not(.fa-brands) {
     gap: 22px;
     width: max-content;
     animation: autoImageSlide 28s linear infinite;
+    animation-play-state: running;
     will-change: transform;
-}
-
-.auto-image-slider-section:hover .auto-image-slider-track {
-    animation-play-state: paused;
 }
 
 .auto-slide-img {
@@ -3881,11 +3878,18 @@ body *:not(i):not(.fa):not(.fa-solid):not(.fa-regular):not(.fa-brands) {
     object-fit: cover;
     display: block;
     border-radius: 18px;
-    transition: transform 0.6s ease;
+    transition: transform 0.35s ease;
+    transform-origin: center;
 }
 
-.auto-slide-img:hover img {
-    transform: scale(1.08);
+@media (hover: hover) and (pointer: fine) {
+    .auto-image-slider-section:hover .auto-image-slider-track {
+        animation-play-state: paused;
+    }
+
+    .auto-slide-img:hover img {
+        transform: scale(1.07);
+    }
 }
 
 @keyframes autoImageSlide {
@@ -5074,10 +5078,7 @@ html body .footer .social-icons a * {
 .portrait-video-card video,
 .portrait-video-card:hover video,
 .wallet-raw-card img,
-.wallet-raw-card:hover img,
-.auto-slide-img img,
-.auto-slide-img:hover img,
-.auto-image-slider-section:hover .auto-image-slider-track {
+.wallet-raw-card:hover img {
     transform: none !important;
     transition: none !important;
     scale: 1 !important;
