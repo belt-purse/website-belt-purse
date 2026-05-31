@@ -1508,6 +1508,47 @@ def google_site_verification():
         'googlef86ab741e88ae339.html'
     )
 
+from werkzeug.security import generate_password_hash
+from flask import request
+
+@app.route("/create-admin-once")
+def create_admin_once():
+    secret = request.args.get("secret")
+
+    # Security token - isko same URL me use karna
+    if secret != "makeadmin123":
+        return "Unauthorized", 403
+
+    email = "admin@gmail.com"
+    password = "admin123"
+
+    admin = User.query.filter_by(email=email).first()
+
+    if admin:
+        admin.username = "admin"
+        admin.password = generate_password_hash(password)
+        admin.is_admin = True
+        admin.email_verified = True
+        admin.phone_verified = False
+        if hasattr(admin, "balance") and admin.balance is None:
+            admin.balance = 0
+        db.session.commit()
+        return "Admin updated successfully. Login with admin@gmail.com / admin123"
+
+    admin = User(
+        username="admin",
+        email=email,
+        password=generate_password_hash(password),
+        is_admin=True,
+        email_verified=True,
+        phone_verified=False,
+        balance=0
+    )
+
+    db.session.add(admin)
+    db.session.commit()
+
+    return "Admin created successfully. Login with admin@gmail.com / admin123"
 
 @app.route("/__seed__", methods=["GET"])
 def run_seed_route():
