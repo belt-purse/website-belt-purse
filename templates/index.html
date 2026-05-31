@@ -66,20 +66,14 @@
         {% set active_hero_slides = hero_slides if hero_slides is defined else fallback_hero_slides %}
         {% for slide in active_hero_slides %}
         <div class="hero-slide {% if loop.first %}active{% endif %}">
-            <picture>
-                {% if slide.mobile_media_url %}
-                <source media="(max-width: 768px)" srcset="{{ slide.mobile_media_url }}">
-                {% endif %}
-                <img src="{{ slide.media_url }}" alt="{{ slide.alt_text or slide.title or 'Belt Purse hero image' }}" class="hero-bg-img">
-            </picture>
-            <div class="hero-overlay"></div>
-            <div class="hero-content">
-                <span class="hero-tagline">{{ slide.button_text or 'Upgrade Your Everyday Style' }}</span>
-                {% set slide_heading = slide.title or ('Premium Belt Collection' if loop.first else 'Featured Belt Styles') %}
-                <h2>{{ 'Featured Belt Styles' if slide_heading == 'Premium Belt Collection' and not loop.first else slide_heading }}</h2>
-                <p>{{ slide.subtitle or 'Premium belts crafted for everyday style' }}</p>
-                <a href="{{ slide.button_link or '/products-page' }}" class="hero-btn">{{ slide.button_text or 'Explore Collection' }}</a>
-            </div>
+            <a href="/products-page" class="hero-slide-link" aria-label="Shop all products">
+                <picture>
+                    {% if slide.mobile_media_url %}
+                    <source media="(max-width: 768px)" srcset="{{ slide.mobile_media_url }}">
+                    {% endif %}
+                    <img src="{{ slide.media_url }}" alt="{{ slide.alt_text or slide.title or 'Belt Purse hero image' }}" class="hero-bg-img">
+                </picture>
+            </a>
         </div>
         {% endfor %}
 
@@ -121,19 +115,13 @@
 
 <section class="auto-image-slider-section" aria-label="Product image carousel">
     <div class="auto-image-slider-track">
-        <div class="auto-slide-img"><img src="/static/images/20260413_153959.jpg" alt="Textured formal leather belt from Belt Purse Store"></div>
-        <div class="auto-slide-img"><img src="/static/images/20260413_180520.jpg" alt="Carbon fiber design mens belt with premium buckle"></div>
-        <div class="auto-slide-img"><img src="/static/images/20260413_175128.jpg" alt="Glossy dot texture designer belt for formal wear"></div>
-        <div class="auto-slide-img"><img src="/static/images/download (3).jpg" alt="Premium leather belt accessory collection"></div>
-        <div class="auto-slide-img"><img src="/static/images/download (4).jpg" alt="Stylish belt and wallet accessory collection"></div>
-        <div class="auto-slide-img"><img src="/static/images/Feathered Edge Bridle Leather Belts.jpg" alt="Feathered edge bridle leather belts"></div>
+        {% for image in auto_slider_images %}
+        <div class="auto-slide-img"><img src="{{ image.media_url }}" alt="{{ image.alt_text or 'Belt Purse product image' }}"></div>
+        {% endfor %}
 
-        <div class="auto-slide-img"><img src="/static/images/20260413_153959.jpg" alt="Textured formal leather belt from Belt Purse Store"></div>
-        <div class="auto-slide-img"><img src="/static/images/20260413_180520.jpg" alt="Carbon fiber design mens belt with premium buckle"></div>
-        <div class="auto-slide-img"><img src="/static/images/20260413_175128.jpg" alt="Glossy dot texture designer belt for formal wear"></div>
-        <div class="auto-slide-img"><img src="/static/images/download.jpg" alt="Premium fashion accessories from Belt Purse Store"></div>
-        <div class="auto-slide-img"><img src="/static/images/download (1).jpg" alt="Leather belt and wallet collection online India"></div>
-        <div class="auto-slide-img"><img src="/static/images/Feathered Edge Bridle Leather Belts.jpg" alt="Feathered edge bridle leather belts"></div>
+        {% for image in auto_slider_images %}
+        <div class="auto-slide-img" aria-hidden="true"><img src="{{ image.media_url }}" alt=""></div>
+        {% endfor %}
     </div>
 </section>
 

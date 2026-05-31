@@ -2811,6 +2811,48 @@ FALLBACK_STYLE_VIDEOS = {
     4: "/static/images/videoplayback (2).mp4",
 }
 
+FALLBACK_AUTO_SLIDER_IMAGES = {
+    1: "/static/images/20260413_153959.jpg",
+    2: "/static/images/20260413_180520.jpg",
+    3: "/static/images/20260413_175128.jpg",
+    4: "/static/images/download (3).jpg",
+    5: "/static/images/download (4).jpg",
+    6: "/static/images/Feathered Edge Bridle Leather Belts.jpg",
+}
+
+FALLBACK_AUTO_SLIDER_ALT_TEXT = {
+    1: "Textured formal leather belt from Belt Purse Store",
+    2: "Carbon fiber design mens belt with premium buckle",
+    3: "Glossy dot texture designer belt for formal wear",
+    4: "Premium leather belt accessory collection",
+    5: "Stylish belt and wallet accessory collection",
+    6: "Feathered edge bridle leather belts",
+}
+
+
+def homepage_media_config(media_type):
+    configs = {
+        "hero_image": {
+            "fallback_map": FALLBACK_HERO_SLIDES,
+            "minimum_extra_position": 4,
+            "label": "Hero image",
+            "extra_label": "hero slide",
+        },
+        "style_video": {
+            "fallback_map": FALLBACK_STYLE_VIDEOS,
+            "minimum_extra_position": 5,
+            "label": "Crafted video",
+            "extra_label": "crafted video",
+        },
+        "auto_slider_image": {
+            "fallback_map": FALLBACK_AUTO_SLIDER_IMAGES,
+            "minimum_extra_position": 7,
+            "label": "Auto slider image",
+            "extra_label": "auto slider image",
+        },
+    }
+    return configs.get(media_type)
+
 
 def homepage_media_position_records(media_type):
     records = HomepageMedia.query.filter_by(media_type=media_type).order_by(
@@ -2870,7 +2912,7 @@ def deactivate_duplicate_homepage_positions(media):
         duplicate.updated_at = datetime.utcnow()
 
 
-def build_homepage_slides(media_type, fallback_map, include_fallback=True):
+def build_homepage_slides(media_type, fallback_map, include_fallback=True, fallback_alt_text=None):
     by_position = homepage_media_position_records(media_type)
     positions = sorted(set(fallback_map.keys()) | set(by_position.keys()))
     slides = []
@@ -2886,7 +2928,7 @@ def build_homepage_slides(media_type, fallback_map, include_fallback=True):
             slides.append({
                 "media_url": fallback_url,
                 "mobile_media_url": None,
-                "alt_text": "Homepage media",
+                "alt_text": (fallback_alt_text or {}).get(position, "Homepage media"),
                 "title": None,
                 "subtitle": None,
                 "button_text": None,
@@ -2901,19 +2943,27 @@ def build_homepage_slides(media_type, fallback_map, include_fallback=True):
 def admin_homepage_media():
     hero_cards = homepage_media_cards("hero_image", FALLBACK_HERO_SLIDES)
     video_cards = homepage_media_cards("style_video", FALLBACK_STYLE_VIDEOS)
-    return render_template("admin/homepage_media.html", hero_cards=hero_cards, video_cards=video_cards)
+    auto_slider_cards = homepage_media_cards("auto_slider_image", FALLBACK_AUTO_SLIDER_IMAGES)
+    return render_template(
+        "admin/homepage_media.html",
+        hero_cards=hero_cards,
+        video_cards=video_cards,
+        auto_slider_cards=auto_slider_cards,
+        auto_slider_fallback_alt_text=FALLBACK_AUTO_SLIDER_ALT_TEXT,
+    )
 
 
 @app.route('/admin/homepage-media/update/<media_type>/<int:position>', methods=['POST'])
 @admin_required
 def admin_update_homepage_media_position(media_type, position):
-    if media_type not in ("hero_image", "style_video") or position < 1:
+    config = homepage_media_config(media_type)
+    if not config or position < 1:
         abort(404)
 
     media_file = request.files.get("media_file")
     media = find_homepage_media_position(media_type, position)
     is_active = bool(request.form.get("is_active"))
-    fallback_map = FALLBACK_HERO_SLIDES if media_type == "hero_image" else FALLBACK_STYLE_VIDEOS
+    fallback_map = config["fallback_map"]
     fallback_url = fallback_map.get(position)
 
     if not media:
@@ -2950,23 +3000,24 @@ def admin_update_homepage_media_position(media_type, position):
     media.subtitle = None
     media.button_text = None
     media.button_link = None
-    media.alt_text = None
+    media.alt_text = (request.form.get("alt_text") or "").strip() or None if media_type == "auto_slider_image" else None
     media.is_active = is_active
     media.updated_at = datetime.utcnow()
     db.session.flush()
     deactivate_duplicate_homepage_positions(media)
     db.session.commit()
-    flash(f"{'Hero image' if media_type == 'hero_image' else 'Crafted video'} position {position} updated.", "success")
+    flash(f"{config['label']} position {position} updated.", "success")
     return redirect(url_for("admin_homepage_media"))
 
 
 @app.route('/admin/homepage-media/add-extra/<media_type>', methods=['POST'])
 @admin_required
 def admin_add_extra_homepage_media(media_type):
-    if media_type not in ("hero_image", "style_video"):
+    config = homepage_media_config(media_type)
+    if not config:
         abort(404)
 
-    minimum_position = 4 if media_type == "hero_image" else 5
+    minimum_position = config["minimum_extra_position"]
     try:
         requested_position = int(request.form.get("position") or 0)
     except ValueError:
@@ -2987,6 +3038,7 @@ def admin_add_extra_homepage_media(media_type):
         media_type=media_type,
         media_url=media_url,
         public_id=public_id,
+        alt_text=(request.form.get("alt_text") or "").strip() or None if media_type == "auto_slider_image" else None,
         sort_order=position,
         is_active=bool(request.form.get("is_active")),
     )
@@ -3001,7 +3053,7 @@ def admin_add_extra_homepage_media(media_type):
             media.mobile_public_id = mobile_public_id
     db.session.add(media)
     db.session.commit()
-    flash(f"Extra {'hero slide' if media_type == 'hero_image' else 'crafted video'} added at position {position}.", "success")
+    flash(f"Extra {config['extra_label']} added at position {position}.", "success")
     return redirect(url_for("admin_homepage_media"))
 
 
@@ -3009,13 +3061,16 @@ def admin_add_extra_homepage_media(media_type):
 @admin_required
 def admin_move_homepage_media(media_id):
     media = HomepageMedia.query.get_or_404(media_id)
+    config = homepage_media_config(media.media_type)
+    if not config:
+        abort(404)
     try:
         new_position = int(request.form.get("position") or media.sort_order or 0)
     except ValueError:
         flash("Please enter a valid position.", "error")
         return redirect(url_for("admin_homepage_media"))
 
-    minimum_position = 4 if media.media_type == "hero_image" else 5
+    minimum_position = config["minimum_extra_position"]
     if new_position < minimum_position:
         flash(f"Extra media position must be {minimum_position} or higher.", "error")
         return redirect(url_for("admin_homepage_media"))
@@ -3281,8 +3336,18 @@ def admin_settings():
 def home():
     hero_slides = build_homepage_slides("hero_image", FALLBACK_HERO_SLIDES)
     style_videos = build_homepage_slides("style_video", FALLBACK_STYLE_VIDEOS)
+    auto_slider_images = build_homepage_slides(
+        "auto_slider_image",
+        FALLBACK_AUTO_SLIDER_IMAGES,
+        fallback_alt_text=FALLBACK_AUTO_SLIDER_ALT_TEXT,
+    )
 
-    return render_template("index.html", hero_slides=hero_slides, style_videos=style_videos)
+    return render_template(
+        "index.html",
+        hero_slides=hero_slides,
+        style_videos=style_videos,
+        auto_slider_images=auto_slider_images,
+    )
 
 
 @app.route("/about")

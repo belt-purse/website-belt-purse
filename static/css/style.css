@@ -3162,6 +3162,15 @@ body *:not(i):not(.fa):not(.fa-solid):not(.fa-regular):not(.fa-brands) {
     display: block !important;
 }
 
+.update-hero .hero-slide-link {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 1 !important;
+    display: block !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+}
+
 .update-hero .hero-content {
     position: absolute !important;
     left: 10% !important;
@@ -5423,11 +5432,11 @@ a.button:hover {
 
 .products-page .products-header {
     display: flex !important;
-    align-items: flex-end !important;
+    align-items: center !important;
     justify-content: space-between !important;
     gap: 24px !important;
     max-width: 1120px !important;
-    margin: 0 auto 34px !important;
+    margin: 0 auto 18px !important;
     flex-wrap: nowrap !important;
 }
 
@@ -5439,6 +5448,7 @@ a.button:hover {
 .products-page .filter-controls,
 .products-page .sort-controls,
 .products-page .products-sort {
+    align-self: center !important;
     margin-left: auto !important;
     width: 220px !important;
     max-width: 220px !important;
@@ -5467,14 +5477,15 @@ a.button:hover {
     .products-page .products-header {
         flex-direction: column !important;
         align-items: flex-start !important;
-        gap: 16px !important;
+        gap: 12px !important;
         max-width: 100% !important;
-        margin-bottom: 24px !important;
+        margin-bottom: 16px !important;
     }
 
     .products-page .filter-controls,
     .products-page .sort-controls,
     .products-page .products-sort {
+        align-self: stretch !important;
         width: 100% !important;
         max-width: 100% !important;
         flex-basis: auto !important;

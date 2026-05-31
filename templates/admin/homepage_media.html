@@ -5,7 +5,7 @@
     <div class="media-admin-header">
         <div>
             <h2>Website Media</h2>
-            <p>Manage homepage hero slider images and Crafted for Everyday Style videos by position.</p>
+            <p>Manage homepage hero slider images, Crafted for Everyday Style videos, and auto slider images by position.</p>
         </div>
     </div>
 
@@ -182,6 +182,91 @@
             </div>
         </div>
     </section>
+
+    <section class="media-section">
+        <div class="media-section-head">
+            <h3>Auto Image Slider Images</h3>
+        </div>
+
+        <div class="media-grid">
+            {% for card in auto_slider_cards %}
+            <div class="media-card">
+                <div class="media-position-label">Position {{ card.position }}</div>
+                {% if card.preview_url %}
+                    <img class="media-auto-slider-preview" src="{{ card.preview_url }}" alt="{{ card.media.alt_text if card.media and card.media.alt_text else auto_slider_fallback_alt_text.get(card.position, 'Auto slider image') }}">
+                {% else %}
+                    <div class="media-missing">No image selected</div>
+                {% endif %}
+
+                <div class="media-card-body">
+                    <span>{{ 'Static fallback image' if card.is_fallback else 'Uploaded image' }}</span>
+                    <small class="media-size-note">Recommended size: 900 x 1200 px or 1080 x 1350 px</small>
+                    <small class="media-size-note">Use clear product/accessory images.</small>
+
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_homepage_media_position', media_type='auto_slider_image', position=card.position) }}">
+                        <label class="media-file">
+                            <span>Change Image</span>
+                            <input type="file" name="media_file" accept="image/png,image/jpeg,image/webp">
+                        </label>
+                        <label>
+                            <span>Alt Text</span>
+                            <input type="text" name="alt_text" maxlength="255" value="{{ card.media.alt_text if card.media and card.media.alt_text else auto_slider_fallback_alt_text.get(card.position, '') }}">
+                        </label>
+
+                        <label class="media-checkbox">
+                            <input type="checkbox" name="is_active" {% if card.is_active %}checked{% endif %}>
+                            <span>Active</span>
+                        </label>
+
+                        <div class="media-actions">
+                            <button type="submit">Save</button>
+                            {% if card.media %}
+                                <a class="danger" href="{{ url_for('admin_delete_homepage_media', media_id=card.media.id) }}">{{ 'Remove/Reset' if card.has_fallback else 'Delete' }}</a>
+                            {% else %}
+                                <span class="media-muted">Fallback active</span>
+                            {% endif %}
+                        </div>
+                    </form>
+
+                    {% if card.media and card.position > 6 %}
+                    <form class="media-position-form" method="POST" action="{{ url_for('admin_move_homepage_media', media_id=card.media.id) }}">
+                        <label>
+                            <span>Position</span>
+                            <input type="number" name="position" min="7" value="{{ card.position }}">
+                        </label>
+                        <button type="submit">Update Order</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="media-card media-add-card">
+                <div class="media-position-label">+ Add Extra Slider Image</div>
+                <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_add_extra_homepage_media', media_type='auto_slider_image') }}">
+                    <label class="media-file">
+                        <span>Slider Image</span>
+                        <input type="file" name="media_file" accept="image/png,image/jpeg,image/webp" required>
+                    </label>
+                    <small class="media-size-note">Recommended size: 900 x 1200 px or 1080 x 1350 px</small>
+                    <small class="media-size-note">Use clear product/accessory images.</small>
+                    <label>
+                        <span>Alt Text</span>
+                        <input type="text" name="alt_text" maxlength="255">
+                    </label>
+                    <label>
+                        <span>Position</span>
+                        <input type="number" name="position" min="7" placeholder="Auto">
+                    </label>
+                    <label class="media-checkbox">
+                        <input type="checkbox" name="is_active" checked>
+                        <span>Active</span>
+                    </label>
+                    <button type="submit">Add Extra Slider Image</button>
+                </form>
+            </div>
+        </div>
+    </section>
 </div>
 
 <style>
@@ -201,6 +286,7 @@
 .media-card video,
 .media-missing { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #f4f4f4; }
 .media-card .media-mobile-preview { aspect-ratio: 9 / 16; object-fit: cover; }
+.media-card .media-auto-slider-preview { aspect-ratio: 3 / 4; object-fit: cover; }
 .media-mobile-empty { min-height: 92px; padding: 18px 12px; display: flex; align-items: center; justify-content: center; text-align: center; color: #777; background: #f4f4f4; font-size: 13px; line-height: 1.4; }
 .media-card video,
 .media-video-missing { aspect-ratio: 9 / 16; }
