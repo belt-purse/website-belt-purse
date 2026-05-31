@@ -323,6 +323,11 @@ with app.app_context():
     ensure_live_db_columns()
     ensure_default_coupons()
 
+# TEMPORARY: remove this registration and temporary_db_json_transfer.py after
+# the Railway internal database-to-database JSON transfer is complete.
+from temporary_db_json_transfer import register_temporary_db_json_transfer_routes
+register_temporary_db_json_transfer_routes(app, db)
+
 
 @login_manager.user_loader
 def load_user(user_id):
