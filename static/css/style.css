@@ -5935,6 +5935,36 @@ body button.cart-coupon-remove-btn:hover {
     opacity: 0.85;
 }
 
+#sizeChartLink,
+#sizeChartLink:hover,
+#sizeChartLink:focus,
+#sizeChartLink:active {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: #111111 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    line-height: 1.2 !important;
+    text-decoration: none !important;
+    transform: none !important;
+}
+
+#sizeChartLink:hover {
+    text-decoration: underline !important;
+    opacity: 0.8;
+}
+
 .product-detail-page .size-chip {
     margin: 0 !important;
 }
