@@ -159,6 +159,7 @@ def ensure_live_db_columns():
     ensure_column_exists("products", "is_archived", "is_archived BOOLEAN DEFAULT FALSE")
     ensure_column_exists("products", "product_type", "product_type VARCHAR(50) DEFAULT 'belt'")
     ensure_column_exists("products", "requires_size", "requires_size BOOLEAN DEFAULT TRUE")
+    ensure_column_exists("products", "size_type", "size_type VARCHAR(30) DEFAULT 'specific'")
     ensure_column_exists("products", "composition_care", "composition_care TEXT")
     ensure_column_exists("products", "additional_details", "additional_details TEXT")
     ensure_column_exists("colors", "hex_code", "hex_code VARCHAR(20)")
@@ -216,6 +217,12 @@ def ensure_live_db_columns():
                 WHERE requires_size IS NULL
             """))
             print(f"SAFE DB MIGRATION: backfilled products.requires_size rows={result.rowcount}")
+            result = conn.execute(text("""
+                UPDATE products
+                SET size_type = 'specific'
+                WHERE size_type IS NULL OR size_type = ''
+            """))
+            print(f"SAFE DB MIGRATION: backfilled products.size_type rows={result.rowcount}")
     else:
         print("SAFE DB MIGRATION: skipped products backfill; table does not exist")
 
@@ -447,6 +454,12 @@ RESEND_FROM_EMAIL = (
     or os.environ.get("RESEND_FROM_EMAIL")
     or "Belt Purse <noreply@belt-purse.com>"
 )
+app.logger.info(
+    "Email provider=resend api_key_loaded=%s from=%s support_recipient=%s",
+    bool(os.environ.get("RESEND_API_KEY")),
+    RESEND_FROM_EMAIL,
+    SUPPORT_EMAIL
+)
 
 
 def json_error(message="Something went wrong", status_code=500):
@@ -502,11 +515,14 @@ def cart_line_total(user_id, product_id, color_id=None, size_id=None):
 def consolidate_cart_duplicates(user_id):
     grouped = defaultdict(list)
     items = Cart.query.filter_by(user_id=user_id).order_by(Cart.id.asc()).all()
+    changed = False
 
     for item in items:
+        if not product_requires_size(item.product_id) and item.size_id is not None:
+            item.size_id = None
+            changed = True
         grouped[(item.product_id, item.color_id, item.size_id)].append(item)
 
-    changed = False
     for duplicates in grouped.values():
         if len(duplicates) <= 1:
             continue
@@ -560,6 +576,8 @@ def parse_optional_int(value):
 
 def add_cart_item(user, product_id, color_id=None, size_id=None, quantity=1):
     quantity = max(int(quantity or 1), 1)
+    size_id = normalize_cart_size_id(product_id, size_id)
+    clear_wallet_cart_sizes(product_id, user.id)
 
     existing_items = Cart.query.filter_by(
         user_id=user.id,
@@ -591,9 +609,49 @@ def product_requires_size(product_id):
     product = Product.query.get(product_id)
     if not product:
         return False
+    if is_wallet_product(product):
+        return False
+    if normalize_size_type(product.size_type) == "universal":
+        return False
     if product.requires_size is not None:
         return bool(product.requires_size)
     return (product.product_type or "belt") == "belt"
+
+
+def is_wallet_product(product):
+    product_type = (getattr(product, "product_type", "") or "").strip().lower()
+    return product_type in ("wallet", "wallets", "purse", "purses")
+
+
+def normalize_size_type(size_type=None):
+    value = (size_type or "specific").strip().lower()
+    return "universal" if value == "universal" else "specific"
+
+
+def product_size_type(product):
+    if is_wallet_product(product):
+        return None
+    return normalize_size_type(product.size_type)
+
+
+def normalize_cart_size_id(product_id, size_id):
+    if not product_requires_size(product_id):
+        return None
+    return normalize_optional_int(size_id)
+
+
+def clear_wallet_cart_sizes(product_id, user_id=None):
+    if product_requires_size(product_id):
+        return
+
+    query = Cart.query.filter_by(product_id=product_id)
+    if user_id is not None:
+        query = query.filter_by(user_id=user_id)
+    query.filter(Cart.size_id.isnot(None)).update(
+        {Cart.size_id: None},
+        synchronize_session=False
+    )
+    db.session.flush()
 
 
 def is_valid_product_size(product_id, size_id):
@@ -648,6 +706,7 @@ def merge_guest_cart_items_to_user(user, items):
         product = Product.query.get(normalized["product_id"])
         if not product or product.is_archived:
             continue
+        normalized["size_id"] = normalize_cart_size_id(product.id, normalized["size_id"])
         if not is_valid_product_size(product.id, normalized["size_id"]):
             continue
 
@@ -715,11 +774,12 @@ def send_resend_email(subject, body="", attachments=None, to_email=None, html=No
 
 def send_resend_email_safe(subject, body="", attachments=None, to_email=None, html=None):
     try:
-        send_resend_email(subject, body=body, attachments=attachments, to_email=to_email, html=html)
-        return True, None
-    except Exception as exc:
-        app.logger.error("Email send failed for subject %s: %s", subject, exc)
-        return False, exc
+        result = send_resend_email(subject, body=body, attachments=attachments, to_email=to_email, html=html)
+        app.logger.info("Email accepted by Resend for subject %s to %s", subject, to_email or SUPPORT_EMAIL)
+        return True, result
+    except Exception:
+        app.logger.exception("Email send failed for subject %s to %s", subject, to_email or SUPPORT_EMAIL)
+        return False, None
 
 
 def get_logged_in_user():
@@ -1911,8 +1971,10 @@ def add_product():
         name, name_error = validate_product_name(request.form.get("name"))
         if name_error:
             errors["name"] = name_error
-        sizes = request.form.get("sizes") if settings["requires_size"] else None
-        if settings["requires_size"]:
+        size_type = normalize_size_type(request.form.get("size_type")) if settings["requires_size"] else None
+        requires_size = settings["requires_size"] and size_type == "specific"
+        sizes = request.form.get("sizes") if requires_size else None
+        if requires_size:
             sizes, sizes_error = validate_belt_sizes(sizes)
             if sizes_error:
                 errors["sizes"] = sizes_error
@@ -1938,14 +2000,15 @@ def add_product():
         original_price = float(request.form.get("original_price", 0))
         discount_percent = float(request.form.get("discount_percent", 0))
         rating = request.form.get("rating")
-        size_unit = request.form.get("size_unit", "inch") if settings["requires_size"] else None
+        size_unit = request.form.get("size_unit", "inch") if requires_size else None
 
         final_price = original_price - (original_price * discount_percent / 100)
 
         product = Product(
             name=name,
             product_type=settings["product_type"],
-            requires_size=settings["requires_size"],
+            requires_size=requires_size,
+            size_type=size_type,
             price=int(final_price),
             original_price=original_price,
             discount_percent=discount_percent,
@@ -1961,11 +2024,13 @@ def add_product():
 
         db.session.add(product)
         db.session.commit()
+        if not requires_size:
+            product.size_unit = None
 
         # =========================
         # ✅ SIZES
         # =========================
-        if settings["requires_size"] and sizes:
+        if requires_size and sizes:
             for s in sizes.split(","):
                 s = s.strip()
                 if s:
@@ -2094,6 +2159,8 @@ def edit_product(id):
         product.product_type = "belt"
     if product.requires_size is None:
         product.requires_size = product.product_type == "belt"
+    if not product.size_type:
+        product.size_type = "specific"
     settings = product_type_settings(product.product_type)
 
     if request.method == "POST":
@@ -2107,8 +2174,10 @@ def edit_product(id):
         name, name_error = validate_product_name(request.form.get("name"))
         if name_error:
             errors["name"] = name_error
-        sizes_text = request.form.get("sizes") if settings["requires_size"] else None
-        if settings["requires_size"]:
+        size_type = normalize_size_type(request.form.get("size_type")) if settings["requires_size"] else None
+        requires_size = settings["requires_size"] and size_type == "specific"
+        sizes_text = request.form.get("sizes") if requires_size else None
+        if requires_size:
             sizes_text, sizes_error = validate_belt_sizes(sizes_text)
             if sizes_error:
                 errors["sizes"] = sizes_error
@@ -2127,13 +2196,14 @@ def edit_product(id):
 
         product.name = name
         product.product_type = settings["product_type"]
-        product.requires_size = settings["requires_size"]
+        product.requires_size = requires_size
+        product.size_type = size_type
         product.guarantee = request.form.get("guarantee")
         product.material = request.form.get("material")
         product.description = request.form.get("description")
         product.composition_care = request.form.get("composition_care")
         product.additional_details = request.form.get("additional_details")
-        product.size_unit = request.form.get("size_unit", "inch") if settings["requires_size"] else None
+        product.size_unit = request.form.get("size_unit", "inch") if requires_size else None
 
         # =========================
         # PRICE
@@ -2279,7 +2349,7 @@ def edit_product(id):
         # NOTE: Only update sizes if the sizes field was actually submitted.
         # This prevents accidentally deleting sizes when editing other fields
         # like description, composition_care, additional_details, etc.
-        if settings["requires_size"] and sizes_text is not None:
+        if requires_size and sizes_text is not None:
             existing_sizes = ProductSize.query.filter_by(product_id=id).all()
             old_labels = ",".join([s.size_label for s in existing_sizes])
             if sizes_text != old_labels:
@@ -2296,7 +2366,10 @@ def edit_product(id):
                                 size_label=s,
                                 size_value=float(s)
                             ))
-        # If sizes_text is None, keep existing sizes unchanged
+        elif not requires_size:
+            clear_wallet_cart_sizes(id)
+            ProductSize.query.filter_by(product_id=id).delete()
+        # If a belt request omits sizes_text, keep existing sizes unchanged.
 
         # =========================
         # TAGS
@@ -3611,6 +3684,7 @@ def products():
     result = []
 
     for p in all_products:
+        requires_size = product_requires_size(p.id)
         product_sizes = [
             {
                 "id": size.id,
@@ -3618,7 +3692,7 @@ def products():
                 "value": size.size_value
             }
             for size in ProductSize.query.filter_by(product_id=p.id).order_by(ProductSize.id.asc()).all()
-        ]
+        ] if requires_size else []
 
         # 📦 related data
         images = ProductImage.query.filter_by(product_id=p.id).order_by(
@@ -3655,7 +3729,8 @@ def products():
                 "discount_percent": p.discount_percent or 0,
                 "rating": p.rating or 0,
                 "product_type": p.product_type or "belt",
-                "requires_size": bool(p.requires_size if p.requires_size is not None else True),
+                "size_type": product_size_type(p),
+                "requires_size": requires_size,
 
                 "images": fallback_images if fallback_images else [images[0].image_url],
 
@@ -3689,7 +3764,8 @@ def products():
                 "discount_percent": p.discount_percent or 0,
                 "rating": p.rating or 0,
                 "product_type": p.product_type or "belt",
-                "requires_size": bool(p.requires_size if p.requires_size is not None else True),
+                "size_type": product_size_type(p),
+                "requires_size": requires_size,
 
                 "images": imgs,
 
@@ -3747,15 +3823,15 @@ def warranty():
 @app.route('/register-warranty', methods=['POST'])
 def register_warranty():
 
-    name = request.form.get('name')
-    phone = request.form.get('phone')
-    email = request.form.get('email')
-    address = request.form.get('address')
-    purchase = request.form.get('purchase')
-    order_id = request.form.get('order_id')
-    product_name = request.form.get('product_name')
-    purchase_date = request.form.get('purchase_date')
-    message = request.form.get('message')
+    name = (request.form.get('name') or '').strip()
+    phone = (request.form.get('phone') or '').strip()
+    email = (request.form.get('email') or '').strip()
+    address = (request.form.get('address') or '').strip()
+    purchase = (request.form.get('purchase') or '').strip()
+    order_id = (request.form.get('order_id') or '').strip()
+    product_name = (request.form.get('product_name') or '').strip()
+    purchase_date = (request.form.get('purchase_date') or '').strip()
+    message = (request.form.get('message') or '').strip()
 
     file = request.files.get('bill')
 
@@ -3764,8 +3840,8 @@ def register_warranty():
        ext = file.filename.split('.')[-1]
        filename = f"{uuid.uuid4()}.{ext}"
 
-    if not name or not phone or not purchase:
-        return json_error("Name, phone, and purchase source are required", 400)
+    if not name or not phone or not email or not purchase:
+        return json_error("Name, phone, email, and purchase source are required", 400)
 
     new_claim = Warranty(
         name=name,
@@ -3780,8 +3856,13 @@ def register_warranty():
         bill=filename
     )
 
-    db.session.add(new_claim)
-    db.session.commit()
+    try:
+        db.session.add(new_claim)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        app.logger.exception("Warranty database save failed")
+        return json_error("Unable to save warranty claim right now. Please try again.", 500)
 
     body = (
         "New warranty registration received from Belt Purse account page.\n\n"
@@ -3798,24 +3879,27 @@ def register_warranty():
     )
 
     attachment = build_resend_attachment(file)
-    try:
-        send_resend_email(
-            "New Warranty Registration - Belt Purse",
-            body,
-            attachments=[attachment] if attachment else None
+    admin_sent, _ = send_resend_email_safe(
+        "New Warranty Registration - Belt Purse",
+        body,
+        attachments=[attachment] if attachment else None
+    )
+    customer_sent, _ = send_resend_email_safe(
+        "Warranty Registration Received - BeltPurse",
+        (
+            f"Hi {name},\n\n"
+            "We received your warranty registration. Our team will review it and contact you soon.\n\n"
+            "BeltPurse Team"
+        ),
+        to_email=email
+    )
+    if not admin_sent or not customer_sent:
+        app.logger.error(
+            "Warranty email delivery incomplete for warranty %s: admin_sent=%s customer_sent=%s",
+            new_claim.id,
+            admin_sent,
+            customer_sent
         )
-        if email:
-            send_resend_email_safe(
-                "Warranty Registration Received - BeltPurse",
-                (
-                    f"Hi {name},\n\n"
-                    "We received your warranty registration. Our team will review it and contact you soon.\n\n"
-                    "BeltPurse Team"
-                ),
-                to_email=email
-            )
-    except Exception as e:
-        app.logger.error("Warranty email failed for warranty %s: %s", new_claim.id, e)
         return json_error("Warranty saved, but email could not be sent right now.", 500)
 
     return jsonify({"success": True, "message": "Warranty claim submitted successfully"})
@@ -3918,8 +4002,13 @@ def submit_issue():
         return json_error("Subject and message are required", 400)
 
     ticket = Ticket(user_id=user.id, subject=subject, message=message)
-    db.session.add(ticket)
-    db.session.commit()
+    try:
+        db.session.add(ticket)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        app.logger.exception("Support issue database save failed for user %s", user.id)
+        return json_error("Unable to save your issue right now. Please try again.", 500)
 
     body = (
         "New support issue submitted from Belt Purse account page.\n\n"
@@ -3933,19 +4022,23 @@ def submit_issue():
         f"Message:\n{message}"
     )
 
-    try:
-        send_resend_email(
-            f"New Support Issue - {subject}",
-            body,
-            attachments=[attachment] if attachment else None
+    admin_sent, _ = send_resend_email_safe(
+        f"New Support Issue - {subject}",
+        body,
+        attachments=[attachment] if attachment else None
+    )
+    customer_sent, _ = send_resend_email_safe(
+        "We received your issue - BeltPurse",
+        "We have received your issue and our team will contact you soon.",
+        to_email=user.email
+    )
+    if not admin_sent or not customer_sent:
+        app.logger.error(
+            "Support issue email delivery incomplete for ticket %s: admin_sent=%s customer_sent=%s",
+            ticket.id,
+            admin_sent,
+            customer_sent
         )
-        send_resend_email_safe(
-            "We received your issue - BeltPurse",
-            "We have received your issue and our team will contact you soon.",
-            to_email=user.email
-        )
-    except Exception as e:
-        app.logger.error("Support issue email failed for ticket %s: %s", ticket.id, e)
         return json_error("Issue saved, but email could not be sent right now.", 500)
 
     return jsonify({"success": True, "message": "Issue submitted successfully", "ticket_id": ticket.id})
@@ -4049,7 +4142,8 @@ def product_detail(id):
    ]
     videos = ProductVideo.query.filter_by(product_id=id).all()
     tags = ProductTag.query.filter_by(product_id=id).all()
-    sizes = ProductSize.query.filter_by(product_id=id).all()
+    requires_size = product_requires_size(id)
+    sizes = ProductSize.query.filter_by(product_id=id).all() if requires_size else []
     colors = ProductColor.query.filter_by(product_id=id).all()
     related_products = Product.query.filter(
        Product.id != id,
@@ -4065,6 +4159,8 @@ def product_detail(id):
     return render_template(
         "product.html",
         product=product,
+        detail_requires_size=requires_size,
+        detail_size_type=product_size_type(product),
         reviews=reviews,
         images=images_data,
         videos=videos,
@@ -4219,7 +4315,8 @@ def remove_cart(id):
 
     user = User.query.filter_by(email=session['email']).first()
     color_id = request_color_id()
-    size_id = normalize_optional_int(request.args.get("size_id"))
+    size_id = normalize_cart_size_id(id, request.args.get("size_id"))
+    clear_wallet_cart_sizes(id, user.id)
 
     db.session.execute(text("""
         DELETE FROM cart WHERE user_id=:uid AND product_id=:pid
@@ -4245,7 +4342,8 @@ def decrease_cart(id):
 
     user = User.query.filter_by(email=session['email']).first()
     color_id = request_color_id()
-    size_id = normalize_optional_int(request.args.get("size_id"))
+    size_id = normalize_cart_size_id(id, request.args.get("size_id"))
+    clear_wallet_cart_sizes(id, user.id)
 
     item = db.session.execute(text("""
         SELECT quantity FROM cart
@@ -4283,7 +4381,8 @@ def add_to_cart(id):
     user     = User.query.filter_by(email=session['email']).first()
     data     = request.get_json(silent=True) or {}
     color_id = request_color_id(data)
-    size_id  = normalize_optional_int(data.get('size_id')  or request.args.get('size_id'))
+    size_id  = normalize_cart_size_id(id, data.get('size_id') or request.args.get('size_id'))
+    clear_wallet_cart_sizes(id, user.id)
 
     if product_requires_size(id) and not size_id:
         return jsonify({"error": "size_required", "message": "Please select a size before adding to cart."}), 400
@@ -4521,12 +4620,13 @@ def toggle_cart(product_id):
         return jsonify({"error": "login required"}), 401
     
     data = request.get_json() or {}
-    size_id = normalize_optional_int(data.get("size_id"))
+    size_id = normalize_cart_size_id(product_id, data.get("size_id"))
     color_id = request_color_id(data)
     product = Product.query.get(product_id)
     if not product or product.is_archived:
         return jsonify({"error": "Product is not available"}), 404
     user = get_user()
+    clear_wallet_cart_sizes(product_id, user.id)
 
     if product_requires_size(product_id) and not size_id:
         return jsonify({"error": "size_required"}), 400
@@ -4635,7 +4735,8 @@ def update_quantity(product_id, action):
 
     user = User.query.filter_by(email=session['email']).first()
     color_id = request_color_id()
-    size_id = normalize_optional_int(request.args.get("size_id"))
+    size_id = normalize_cart_size_id(product_id, request.args.get("size_id"))
+    clear_wallet_cart_sizes(product_id, user.id)
     cart_item = db.session.execute(text("""
         SELECT * FROM cart
         WHERE user_id=:uid AND product_id=:pid
@@ -4684,6 +4785,9 @@ def update_quantity(product_id, action):
 @app.route("/product/sizes/<int:product_id>")
 def get_product_sizes(product_id):
 
+    if not product_requires_size(product_id):
+        return jsonify([])
+
     sizes = ProductSize.query.filter_by(product_id=product_id).all()
 
     return jsonify([
@@ -4696,6 +4800,9 @@ def get_product_sizes(product_id):
     ])
 @app.route("/cart/selected_size/<int:product_id>")
 def get_selected_size(product_id):
+
+    if not product_requires_size(product_id):
+        return jsonify({"size_id": None})
 
     if 'email' not in session:
         return jsonify({"size_id": None})

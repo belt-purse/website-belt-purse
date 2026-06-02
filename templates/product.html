@@ -1970,11 +1970,11 @@ body {
 
 @media (max-width: 768px) {
     body {
-        padding-bottom: 76px;
+        padding-bottom: 0;
     }
 
     .product-detail-page {
-        padding: 10px 10px 92px !important;
+        padding: 10px !important;
     }
 
     .product-breadcrumb {
@@ -2664,7 +2664,7 @@ let lightboxMouseEndX = 0;
 let isLightboxDragging = false;
 
 const DETAIL_PRODUCT_ID = Number("{{ product.id }}");
-const DETAIL_REQUIRES_SIZE = {{ 'true' if product.requires_size else 'false' }};
+const DETAIL_REQUIRES_SIZE = {{ 'true' if detail_requires_size else 'false' }};
 let selectedSize = null;
 let selectedSizeLabel = null;
 let selectedColorId = new URLSearchParams(window.location.search).get("color") || null;
@@ -3628,7 +3628,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     </div>
                 </div>
-                {% if product.requires_size %}
+                {% if detail_requires_size %}
                 <div class="property-card product-size-section">
                     <strong class="size-row-title">
                         <span>Size</span>
@@ -3659,6 +3659,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         </details>
 
+        {% if detail_requires_size %}
         <details class="detail-row">
             <summary>Fit and Sizing</summary>
             <div class="detail-row-content">
@@ -3666,6 +3667,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <p>Size unit: {{ product.size_unit or 'inch' }}</p>
             </div>
         </details>
+        {% endif %}
 
         <details class="detail-row">
             <summary>Composition and Care</summary>
@@ -3703,16 +3705,25 @@ document.addEventListener("DOMContentLoaded", () => {
                     <strong>Guarantee</strong>
                     {{ product.guarantee or '6 months warranty' }}
                 </div>
+                {% if detail_requires_size %}
                 <div class="property-card">
                     <strong>Size Unit</strong>
                     {{ product.size_unit or 'inch' }}
                 </div>
+                {% elif detail_size_type == 'universal' %}
+                <div class="property-card product-size-section">
+                    <strong class="size-row-title">
+                        <span>Size: Universal Size</span>
+                    </strong>
+                </div>
+                {% endif %}
                 <div class="property-card">
                     <strong>Tag</strong>
                     {{ tags[0].tag if tags else 'Premium' }}
                 </div>
             </div>
             
+            {% if detail_requires_size %}
             <div class="size-chart">
              
     <h3>Belt Size Guide</h3>
@@ -3736,6 +3747,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
    
 </div>
+            {% endif %}
      </div>   
 
      <div class="tab-panel" id="reviews">
@@ -3779,6 +3791,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </div>
     </div>
 
+    {% if detail_requires_size %}
     <div class="size-chart-modal" id="sizeChartModal" aria-hidden="true">
         <div class="size-chart-dialog" role="dialog" aria-modal="true" aria-labelledby="sizeChartTitle">
             <button type="button" class="size-chart-close" onclick="closeSizeChart()" aria-label="Close size chart">&times;</button>
@@ -3828,6 +3841,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </table>
         </div>
     </div>
+    {% endif %}
 
     <section class="related-products">
         <h2>Explore Related Products</h2>

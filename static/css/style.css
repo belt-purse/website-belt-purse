@@ -5186,6 +5186,81 @@ a:hover {
     }
 }
 
+/* ===== RESPONSIVE REELS CAROUSEL ===== */
+
+.portrait-video-carousel {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.portrait-video-viewport {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    cursor: grab;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.portrait-video-viewport.is-dragging {
+    cursor: grabbing;
+    scroll-behavior: auto;
+    scroll-snap-type: none;
+    user-select: none;
+}
+
+.portrait-video-viewport::-webkit-scrollbar {
+    display: none;
+}
+
+.portrait-video-carousel .portrait-video-grid {
+    max-width: none;
+    margin: 0;
+    display: flex;
+    gap: 22px;
+    width: 100%;
+}
+
+.portrait-video-carousel .portrait-video-grid.is-centered {
+    justify-content: center;
+}
+
+.portrait-video-carousel .portrait-video-card,
+.portrait-video-carousel .portrait-video-card:nth-child(n) {
+    display: block !important;
+    flex: 0 0 calc((100% - 66px) / 4);
+    min-width: 0;
+    scroll-snap-align: start;
+}
+
+@media (max-width: 1024px) {
+    .portrait-video-carousel .portrait-video-grid {
+        gap: 16px;
+    }
+
+    .portrait-video-carousel .portrait-video-card,
+    .portrait-video-carousel .portrait-video-card:nth-child(n) {
+        flex-basis: calc((100% - 32px) / 3);
+    }
+}
+
+@media (max-width: 768px) {
+    .portrait-video-carousel .portrait-video-grid {
+        gap: 10px;
+    }
+
+    .portrait-video-carousel .portrait-video-card,
+    .portrait-video-carousel .portrait-video-card:nth-child(n) {
+        flex-basis: calc((100% - 10px) / 2);
+    }
+
+}
+
 .coupon-box {
     width: 100%;
     margin: 14px 0;

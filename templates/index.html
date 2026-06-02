@@ -131,7 +131,9 @@
         <h2>Timeless Designs, Everyday Comfort</h2>
     </div>
 
-    <div class="portrait-video-grid">
+    <div class="portrait-video-carousel" id="reelsCarousel">
+        <div class="portrait-video-viewport" id="reelsViewport">
+            <div class="portrait-video-grid" id="reelsTrack">
         {% set fallback_style_videos = [
             {'media_url': '/static/images/videoplayback (1).mp4', 'title': 'Crafted for Everyday Style'},
             {'media_url': '/static/images/videoplayback (2).mp4', 'title': 'Crafted for Everyday Style'}
@@ -144,6 +146,8 @@
             </video>
         </div>
         {% endfor %}
+            </div>
+        </div>
     </div>
 </section>
 
@@ -236,6 +240,60 @@ document.addEventListener("DOMContentLoaded", function () {
 
     showSlide(0);
     startAutoSlide();
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    const viewport = document.getElementById("reelsViewport");
+    const track = document.getElementById("reelsTrack");
+    if (!viewport || !track) return;
+
+    const cards = Array.from(track.querySelectorAll(".portrait-video-card"));
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartScrollLeft = 0;
+
+    function visibleCardCount() {
+        if (window.matchMedia("(max-width: 768px)").matches) return 2;
+        if (window.matchMedia("(max-width: 1024px)").matches) return 3;
+        return 4;
+    }
+
+    function updateCarousel() {
+        const canScroll = cards.length > visibleCardCount();
+        track.classList.toggle("is-centered", !canScroll);
+
+        if (!canScroll) {
+            viewport.scrollLeft = 0;
+        }
+    }
+
+    viewport.addEventListener("pointerdown", event => {
+        if (event.pointerType !== "mouse" || event.button !== 0 || cards.length <= visibleCardCount()) return;
+        isDragging = true;
+        dragStartX = event.clientX;
+        dragStartScrollLeft = viewport.scrollLeft;
+        viewport.classList.add("is-dragging");
+        viewport.setPointerCapture(event.pointerId);
+    });
+
+    viewport.addEventListener("pointermove", event => {
+        if (!isDragging) return;
+        viewport.scrollLeft = dragStartScrollLeft - (event.clientX - dragStartX);
+    });
+
+    function stopDragging(event) {
+        if (!isDragging) return;
+        isDragging = false;
+        viewport.classList.remove("is-dragging");
+        if (viewport.hasPointerCapture(event.pointerId)) {
+            viewport.releasePointerCapture(event.pointerId);
+        }
+    }
+
+    viewport.addEventListener("pointerup", stopDragging);
+    viewport.addEventListener("pointercancel", stopDragging);
+    window.addEventListener("resize", updateCarousel);
+    updateCarousel();
 });
 
 window.loadProducts = function () {

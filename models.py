@@ -76,6 +76,7 @@ class Product(db.Model):
 
     product_type = db.Column(db.String(50), default="belt")
     requires_size = db.Column(db.Boolean, default=True)
+    size_type = db.Column(db.String(30), default="specific")
     size_unit = db.Column(db.String(20), default="inch")
     is_archived = db.Column(db.Boolean, default=False)
     images = db.relationship('ProductImage', backref='product', cascade="all, delete")

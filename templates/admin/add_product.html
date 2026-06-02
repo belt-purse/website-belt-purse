@@ -107,7 +107,16 @@
             <div class="form-section">
                 <h3>Size Details</h3>
 
-                <div class="grid-2">
+                {% set selected_size_type = form_data.get('size_type', 'specific') %}
+                <div class="form-group">
+                    <label>Size Type</label>
+                    <select name="size_type" id="sizeTypeSelect" onchange="toggleSizeTypeFields()">
+                        <option value="specific" {% if selected_size_type == 'specific' %}selected{% endif %}>Specific Sizes</option>
+                        <option value="universal" {% if selected_size_type == 'universal' %}selected{% endif %}>Universal Size</option>
+                    </select>
+                </div>
+
+                <div class="grid-2" id="specificSizeFields">
                     <div class="form-group">
                         <label>Size Unit</label>
                         <select name="size_unit">
@@ -1071,6 +1080,20 @@ mrpInput.addEventListener("input", updateFinalPrice);
 discountInput.addEventListener("input", updateFinalPrice);
 
 const productForm = document.getElementById("productForm");
+function toggleSizeTypeFields() {
+    const sizeType = document.getElementById("sizeTypeSelect");
+    const fields = document.getElementById("specificSizeFields");
+    if (!sizeType || !fields) return;
+
+    const isSpecific = sizeType.value === "specific";
+    fields.style.display = isSpecific ? "" : "none";
+    fields.querySelectorAll("input, select").forEach(field => {
+        field.disabled = !isSpecific;
+    });
+}
+
+toggleSizeTypeFields();
+
 if (productForm) {
     productForm.addEventListener("submit", function() {
         if (productForm.dataset.submitting === "true") return false;

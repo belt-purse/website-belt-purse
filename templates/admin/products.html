@@ -138,6 +138,8 @@
 
                     {% if p.requires_size and p.size_unit %}
                     <p><span>Unit:</span> {{ p.size_unit|upper }}</p>
+                    {% elif p.size_type == 'universal' %}
+                    <p><span>Size:</span> Universal</p>
                     {% endif %}
                 </div>
 

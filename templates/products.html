@@ -1138,9 +1138,18 @@ function getProductColorImages(product) {
     return colorImages;
 }
 
+function isWalletProduct(product) {
+    const productType = String(product?.product_type || product?.category || "").trim().toLowerCase();
+    return ["wallet", "wallets", "purse", "purses"].includes(productType);
+}
+
+function isUniversalSizeProduct(product) {
+    return String(product?.size_type || "").trim().toLowerCase() === "universal";
+}
+
 function productNeedsSize(productId) {
     const product = allProductsData.find(item => String(getProductBaseId(item)) === String(productId));
-    return product ? product.requires_size !== false : true;
+    return product ? !isWalletProduct(product) && !isUniversalSizeProduct(product) && product.requires_size !== false : true;
 }
 
 function getMobileProductCards(products) {
@@ -1156,7 +1165,7 @@ function getMobileProductCards(products) {
             ...product,
             id: productId,
             product_id: productId,
-            requires_size: product.requires_size !== false,
+            requires_size: !isWalletProduct(product) && !isUniversalSizeProduct(product) && product.requires_size !== false,
             colors: [],
             color_images: getProductColorImages(product),
             images: product.images || []
