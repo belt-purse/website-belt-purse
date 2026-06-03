@@ -167,8 +167,9 @@
                 <div class="form-group">
                     <label>Size Type</label>
                     <select name="size_type" id="sizeTypeSelect" onchange="toggleSizeTypeFields()">
-                        <option value="specific" {% if selected_size_type == 'specific' %}selected{% endif %}>Specific Sizes</option>
+                        <option value="specific" {% if selected_size_type == 'specific' %}selected{% endif %}>Has Sizes</option>
                         <option value="universal" {% if selected_size_type == 'universal' %}selected{% endif %}>Universal Size</option>
+                        <option value="none" {% if selected_size_type == 'none' %}selected{% endif %}>No Size Required</option>
                     </select>
                 </div>
 

@@ -3694,6 +3694,12 @@ document.addEventListener("DOMContentLoaded", () => {
                         {% endfor %}
                     </div>
                 </div>
+                {% elif detail_size_type == 'universal' %}
+                <div class="property-card product-size-section">
+                    <strong class="size-row-title">
+                        <span>Size: Universal</span>
+                    </strong>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -3761,7 +3767,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 {% elif detail_size_type == 'universal' %}
                 <div class="property-card product-size-section">
                     <strong class="size-row-title">
-                        <span>Size: Universal Size</span>
+                        <span>Size: Universal</span>
                     </strong>
                 </div>
                 {% endif %}
@@ -3897,7 +3903,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     </tr>
                 </tbody>
             </table>
-            <p class="size-chart-note">Belt Width: 38 MM Standard</p>
+            <p class="size-chart-note">Belt Width: 40 MM Standard</p>
         </div>
     </div>
     {% endif %}

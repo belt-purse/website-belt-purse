@@ -254,6 +254,7 @@ button:hover {
                 <img src="{{ order_item_image_url(item) }}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:10px;margin-right:10px;vertical-align:middle;">
                 Product: {{ item.product.name if item.product else 'Product #' ~ item.product_id }} |
                 {% if item.size %}Size: {{ item.size.size_label }} |{% endif %}
+                {% if not item.size and item.product and item.product.product_type == 'belt' and item.product.size_type == 'universal' %}Size: Universal |{% endif %}
                 {% if item.color %}Color: {{ item.color.name }} |{% endif %}
                 Qty: {{ item.quantity }} |
                 Price: ₹{{ item.price }}

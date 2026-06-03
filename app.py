@@ -611,7 +611,7 @@ def product_requires_size(product_id):
         return False
     if is_wallet_product(product):
         return False
-    if normalize_size_type(product.size_type) == "universal":
+    if normalize_size_type(product.size_type) in ("universal", "none"):
         return False
     if product.requires_size is not None:
         return bool(product.requires_size)
@@ -625,7 +625,9 @@ def is_wallet_product(product):
 
 def normalize_size_type(size_type=None):
     value = (size_type or "specific").strip().lower()
-    return "universal" if value == "universal" else "specific"
+    if value in ("universal", "none"):
+        return value
+    return "specific"
 
 
 def product_size_type(product):
@@ -1267,7 +1269,12 @@ def build_order_email_lines(order):
     lines = []
     for item in order.items:
         product_name = item.product.name if item.product else f"Product #{item.product_id}"
-        size_label = f", Size: {item.size.size_label}" if item.size else ""
+        if item.size:
+            size_label = f", Size: {item.size.size_label}"
+        elif item.product and product_size_type(item.product) == "universal":
+            size_label = ", Size: Universal"
+        else:
+            size_label = ""
         color_name = f", Color: {item.color.name}" if item.color else ""
         lines.append(
             f"{product_name}{size_label}{color_name} x {item.quantity} - INR {item.price * item.quantity}"
@@ -4242,7 +4249,10 @@ def cart_page():
             p.price,
             c.color_id,
             c.size_id,
-            COALESCE(ps.size_label, '') AS size_label,
+            CASE
+                WHEN p.product_type = 'belt' AND p.size_type = 'universal' THEN 'Universal'
+                ELSE COALESCE(ps.size_label, '')
+            END AS size_label,
             COALESCE(co.name, '') AS color_name,
             COALESCE(co.hex_code, co.code, '') AS color_code,
             COALESCE(
@@ -4995,7 +5005,7 @@ def checkout_review():
                 "color_id": item.color_id,
                 "color_name": color.name if color else None,
                 "size_id": item.size_id,
-                "size_label": item.size_label,
+                "size_label": "Universal" if product_size_type(product) == "universal" else item.size_label,
                 "quantity": item.quantity,
                 "price": product.price,
                 "item_total": item_total

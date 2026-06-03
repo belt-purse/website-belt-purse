@@ -32,6 +32,7 @@
                                 <small>
                                     Qty: {{ item.quantity }}
                                     {% if item.size %} | Size: {{ item.size.size_label }}{% endif %}
+                                    {% if not item.size and item.product and item.product.product_type == 'belt' and item.product.size_type == 'universal' %} | Size: Universal{% endif %}
                                     {% if item.color %} | Color: {{ item.color.name }}{% endif %}
                                 </small>
                             </div>
