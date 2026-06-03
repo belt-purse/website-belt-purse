@@ -1572,6 +1572,12 @@ body {
     font-size: 13px;
 }
 
+.size-chart-note {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: #333;
+}
+
 @media (max-width: 990px) {
     .product-hero {
         grid-template-columns: 1fr;
@@ -2624,15 +2630,57 @@ body .lightbox-overlay .product-lightbox-next:active {
 }
 
 @media (max-width: 768px) {
+    body {
+        padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+    }
+
+    .product-detail-page {
+        padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    }
+
     .product-detail-page .product-actions {
-        display: grid !important;
-        grid-template-columns: 1fr !important;
-        gap: 10px !important;
-        margin-bottom: 18px !important;
+        display: none !important;
     }
 
     .mobile-sticky-actions {
-        display: none !important;
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 10050 !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+        padding: 10px 14px calc(10px + env(safe-area-inset-bottom)) !important;
+        background: #fff !important;
+        border-top: 1px solid rgba(0,0,0,0.08) !important;
+        box-shadow: 0 -10px 28px rgba(0,0,0,0.14) !important;
+    }
+
+    .mobile-sticky-actions .btn {
+        width: 100% !important;
+        min-height: 52px !important;
+        height: 52px !important;
+        padding: 0 12px !important;
+        border-radius: 6px !important;
+        font-size: 13px !important;
+        line-height: 1 !important;
+        letter-spacing: 0.3px !important;
+        text-transform: uppercase !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .mobile-sticky-actions .add-cart-btn {
+        background: var(--btn-gradient) !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+    .mobile-sticky-actions .btn-flat {
+        background: var(--btn-gradient) !important;
+        color: #fff !important;
+        border: none !important;
     }
 }
 </style>
@@ -3803,42 +3851,53 @@ document.addEventListener("DOMContentLoaded", () => {
                 <li>This measurement indicates your proper belt size. If you end up with an odd number, opt for the next even size. (For example, if your measurement is 31, choose a size 32 belt.)</li>
             </ol>
 
-            <div class="size-unit-row">
-                <span>Select Sizes In:</span>
-                <span class="size-unit-pill">CM</span>
-                <span class="size-unit-pill">IN</span>
-            </div>
-
             <table class="size-chart-table">
                 <thead>
                     <tr>
-                        <th>SIZE</th>
-                        <th>TO FIT WAIST (CM)</th>
-                        <th>BELT LENGTH (CM)</th>
-                        <th>WIDTH (CM)</th>
+                        <th>WAIST LENGTH (IN)</th>
+                        <th>BELT LENGTH (IN)</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>80</td>
-                        <td>71.12</td>
-                        <td>101.60</td>
-                        <td>3.81</td>
+                        <td>28</td>
+                        <td>34</td>
                     </tr>
                     <tr>
-                        <td>90</td>
-                        <td>81.28</td>
-                        <td>111.76</td>
-                        <td>3.81</td>
+                        <td>30</td>
+                        <td>36</td>
                     </tr>
                     <tr>
-                        <td>100</td>
-                        <td>86.36</td>
-                        <td>121.92</td>
-                        <td>3.81</td>
+                        <td>32</td>
+                        <td>38</td>
+                    </tr>
+                    <tr>
+                        <td>34</td>
+                        <td>40</td>
+                    </tr>
+                    <tr>
+                        <td>36</td>
+                        <td>42</td>
+                    </tr>
+                    <tr>
+                        <td>38</td>
+                        <td>44</td>
+                    </tr>
+                    <tr>
+                        <td>40</td>
+                        <td>46</td>
+                    </tr>
+                    <tr>
+                        <td>42</td>
+                        <td>48</td>
+                    </tr>
+                    <tr>
+                        <td>44</td>
+                        <td>50</td>
                     </tr>
                 </tbody>
             </table>
+            <p class="size-chart-note">Belt Width: 38 MM Standard</p>
         </div>
     </div>
     {% endif %}
@@ -3862,11 +3921,11 @@ document.addEventListener("DOMContentLoaded", () => {
     </section>
 
     <div class="mobile-sticky-actions">
+        <button class="btn btn-primary add-cart-btn" type="button" data-id="{{ product.id }}">
+            ADD TO CART
+        </button>
         <button class="btn btn-flat buy-now-btn" type="button" data-default-text="BUY NOW" onclick="handleProductBuyNow({{ product.id }})">
             BUY NOW
-        </button>
-        <button class="btn btn-primary add-cart-btn mobile-add-bag" type="button" data-id="{{ product.id }}">
-            ADD TO BAG
         </button>
     </div>
 
