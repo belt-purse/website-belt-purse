@@ -1,20 +1,77 @@
 {% extends "base.html" %}
+{% block title %}Exchange Policy | Belt Purse Store{% endblock %}
+{% block meta_description %}Exchange policy for Belt Purse Store orders, including eligibility, request process, and support contact details.{% endblock %}
 {% block content %}
 
 <section class="policy-page">
-    <h1>Return & Exchange Policy</h1>
+    <div class="policy-shell">
+        <div class="policy-hero">
+            <p>Customer Care</p>
+            <h1>Exchange Policy</h1>
+        </div>
 
-    <p>You can return or exchange products within 7 days of delivery.</p>
+        <div class="policy-card">
+            <p class="policy-lead">
+                We offer exchange only in rare cases. If you receive a product with an issue, you can raise an exchange request within 7 days of delivery.
+            </p>
 
-    <h3>Conditions</h3>
-    <ul>
-        <li>Item must be unused</li>
-        <li>Original packaging required</li>
-    </ul>
+            <div class="policy-section">
+                <h2>Conditions</h2>
+                <ul>
+                    <li>Item must be unused</li>
+                    <li>Product should be in its original packaging</li>
+                    <li>Product tag must not be removed from the product</li>
+                    <li>Exchange will be considered only after the issue is reviewed by our team</li>
+                </ul>
+            </div>
 
-    <h3>Refund</h3>
-    <p>Refunds are processed within 5–7 working days.</p>
+            <div class="policy-section">
+                <h2>How to Request an Exchange</h2>
+                <p>To request an exchange, please go to:</p>
+                <p class="policy-path">Login / Account &gt; Help Center &gt; Submit an Issue</p>
+                <p>Our team will review your request and process it accordingly.</p>
+            </div>
 
+            <div class="policy-contact">
+                <h2>You can also contact us through</h2>
+                <p><strong>Email:</strong> beltpurse.com@gmail.com</p>
+                <p><strong>WhatsApp:</strong> +91 7000747936</p>
+            </div>
+
+            <div class="policy-section">
+                <h2>Processing</h2>
+                <p>Once your request is verified, we will proceed with the exchange process.</p>
+            </div>
+        </div>
+    </div>
 </section>
+
+<style>
+.policy-page { background: #efefef; padding: 48px 18px 70px; }
+.policy-shell { max-width: 980px; margin: 0 auto; }
+.policy-hero { padding: 34px 0 24px; border-bottom: 1px solid rgba(10,92,86,0.16); }
+.policy-hero p { margin: 0 0 8px; color: #0A5C56; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+.policy-hero h1 { margin: 0; color: #102d2a; font-size: clamp(32px, 5vw, 54px); font-weight: 500; letter-spacing: 0; }
+.policy-card { margin-top: 28px; background: #fff; border: 1px solid rgba(10,92,86,0.12); padding: clamp(22px, 4vw, 42px); }
+.policy-lead { margin: 0 0 26px; color: #24413e; font-size: 18px; line-height: 1.75; }
+.policy-section { margin-top: 28px; }
+.policy-section h2,
+.policy-contact h2 { margin: 0 0 12px; color: #083E3A; font-size: 22px; font-weight: 500; }
+.policy-section p,
+.policy-contact p,
+.policy-section li { color: #38504d; font-size: 16px; line-height: 1.75; }
+.policy-section ul { margin: 10px 0 0; padding-left: 22px; }
+.policy-section li { margin-bottom: 8px; }
+.policy-path { background: #f3f8f7; border-left: 4px solid #0A5C56; padding: 14px 16px; color: #083E3A !important; font-weight: 500; }
+.policy-contact { margin-top: 30px; padding: 22px; background: #f8faf9; border: 1px solid rgba(10,92,86,0.14); }
+.policy-contact p { margin: 8px 0; }
+@media (max-width: 640px) {
+    .policy-page { padding: 26px 12px 46px; }
+    .policy-card { padding: 20px 16px; }
+    .policy-lead { font-size: 16px; }
+    .policy-section h2,
+    .policy-contact h2 { font-size: 19px; }
+}
+</style>
 
 {% endblock %}

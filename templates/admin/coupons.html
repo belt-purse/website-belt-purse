@@ -23,11 +23,11 @@
             <thead>
                 <tr>
                     <th>Code</th>
+                    <th>Type</th>
                     <th>Discount</th>
                     <th>Validity</th>
                     <th>Usage</th>
                     <th>Status</th>
-                    <th>Product Page</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -41,7 +41,16 @@
                         <small>{{ coupon.title or '-' }}</small>
                     </td>
                     <td>
-                        {% if coupon.discount_type == 'percent' %}
+                        {{ (coupon.coupon_type or 'fixed_amount').replace('_', ' ')|title }}
+                        <small>{{ (coupon.applicable_category or 'all')|title }}</small>
+                        {% if coupon.auto_apply %}<small>Auto apply</small>{% endif %}
+                    </td>
+                    <td>
+                        {% if coupon.coupon_type == 'buy_x_fixed_payable' %}
+                            Pay Rs.{{ coupon.final_payable_amount|int }}
+                            <small>Qty: {{ coupon.min_quantity_required or '-' }}</small>
+                            {% if coupon.required_product_price %}<small>Price Rs.{{ coupon.required_product_price|int }} only</small>{% endif %}
+                        {% elif coupon.discount_type == 'percent' %}
                             {{ coupon.discount_value|int }}%
                             {% if coupon.max_discount_amount %}<small>Max Rs.{{ coupon.max_discount_amount|int }}</small>{% endif %}
                         {% else %}
@@ -67,12 +76,7 @@
                             {{ 'Active' if coupon.is_active else 'Inactive' }}
                         </span>
                         {% if coupon.first_order_only %}<small>First order only</small>{% endif %}
-                    </td>
-                    <td>
-                        <span class="coupon-status {{ 'active' if coupon.show_on_product_page else 'inactive' }}">
-                            {{ 'Shown' if coupon.show_on_product_page else 'Hidden' }}
-                        </span>
-                        <small>Priority: {{ coupon.product_page_priority or 0 }}</small>
+                        {% if not coupon.allow_combination %}<small>No combination</small>{% endif %}
                     </td>
                     <td>
                         <div class="coupon-actions">

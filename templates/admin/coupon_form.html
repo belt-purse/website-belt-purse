@@ -5,12 +5,15 @@
 {% macro field_value(name, fallback='') -%}
     {{ form_data.get(name, fallback) if form_data else fallback }}
 {%- endmacro %}
+{% set selected_coupon_type = field_value('coupon_type', coupon.coupon_type if coupon else 'fixed_amount') %}
+{% set selected_discount_type = field_value('discount_type', coupon.discount_type if coupon else 'fixed') %}
+{% set selected_category = field_value('applicable_category', coupon.applicable_category if coupon else 'all') %}
 
 <div class="coupon-form-page">
     <div class="coupon-form-header">
         <div>
             <h2>{{ 'Edit Coupon' if is_edit else 'Add Coupon' }}</h2>
-            <p>{{ 'Update an existing promo code and reuse expired campaigns.' if is_edit else 'Create a database-backed promo code for checkout.' }}</p>
+            <p>Create checkout rules for first order, category, product, cart total, and buy X offers.</p>
         </div>
         <a href="{{ url_for('admin_coupons') }}">Back to Coupons</a>
     </div>
@@ -31,22 +34,40 @@
             </label>
 
             <label>
-                <span>Coupon Title/Name</span>
+                <span>Coupon Title</span>
                 <input name="title" value="{{ field_value('title', coupon.title if coupon else '') }}">
             </label>
 
+            <label class="wide-field">
+                <span>Coupon Description</span>
+                <textarea name="description">{{ field_value('description', coupon.description if coupon else '') }}</textarea>
+            </label>
+
             <label>
-                <span>Discount Type</span>
-                {% set selected_type = field_value('discount_type', coupon.discount_type if coupon else 'fixed') %}
-                <select name="discount_type">
-                    <option value="fixed" {% if selected_type == 'fixed' %}selected{% endif %}>Fixed Amount</option>
-                    <option value="percent" {% if selected_type == 'percent' %}selected{% endif %}>Percentage</option>
+                <span>Coupon Type</span>
+                <select name="coupon_type">
+                    <option value="fixed_amount" {% if selected_coupon_type == 'fixed_amount' %}selected{% endif %}>Fixed Amount Discount</option>
+                    <option value="percentage" {% if selected_coupon_type == 'percentage' %}selected{% endif %}>Percentage Discount</option>
+                    <option value="first_order_discount" {% if selected_coupon_type == 'first_order_discount' %}selected{% endif %}>First Order Discount</option>
+                    <option value="buy_x_fixed_payable" {% if selected_coupon_type == 'buy_x_fixed_payable' %}selected{% endif %}>Buy X Get Fixed Payable Price</option>
+                    <option value="buy_x_get_y_discount" {% if selected_coupon_type == 'buy_x_get_y_discount' %}selected{% endif %}>Buy X Get Y Discount</option>
+                    <option value="category_based_discount" {% if selected_coupon_type == 'category_based_discount' %}selected{% endif %}>Category Based Discount</option>
+                    <option value="product_based_discount" {% if selected_coupon_type == 'product_based_discount' %}selected{% endif %}>Product Based Discount</option>
+                    <option value="cart_total_based_discount" {% if selected_coupon_type == 'cart_total_based_discount' %}selected{% endif %}>Cart Total Based Discount</option>
                 </select>
             </label>
 
             <label>
                 <span>Discount Value</span>
-                <input type="number" step="0.01" min="0" name="discount_value" value="{{ field_value('discount_value', coupon.discount_value if coupon else '') }}" required>
+                <input type="number" step="0.01" min="0" name="discount_value" value="{{ field_value('discount_value', coupon.discount_value if coupon else 0) }}">
+            </label>
+
+            <label>
+                <span>Discount Mode</span>
+                <select name="discount_type">
+                    <option value="fixed" {% if selected_discount_type == 'fixed' %}selected{% endif %}>Fixed Amount</option>
+                    <option value="percent" {% if selected_discount_type == 'percent' %}selected{% endif %}>Percentage</option>
+                </select>
             </label>
 
             <label>
@@ -60,13 +81,49 @@
             </label>
 
             <label>
-                <span>Valid From</span>
-                <input type="date" name="valid_from" value="{{ field_value('valid_from', coupon.valid_from.strftime('%Y-%m-%d') if coupon and coupon.valid_from else '') }}">
+                <span>Applicable Category</span>
+                <select name="applicable_category">
+                    <option value="all" {% if selected_category == 'all' %}selected{% endif %}>All Categories</option>
+                    <option value="belt" {% if selected_category in ['belt', 'belts'] %}selected{% endif %}>Belts</option>
+                    <option value="wallet" {% if selected_category in ['wallet', 'wallets'] %}selected{% endif %}>Wallets</option>
+                </select>
             </label>
 
             <label>
-                <span>Valid Until</span>
-                <input type="date" name="valid_until" value="{{ field_value('valid_until', coupon.valid_until.strftime('%Y-%m-%d') if coupon and coupon.valid_until else '') }}">
+                <span>Specific Category</span>
+                {% set selected_category_id = field_value('applicable_category_id', coupon.applicable_category_id if coupon else '') %}
+                <select name="applicable_category_id">
+                    <option value="">None</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if selected_category_id|string == category.id|string %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="wide-field">
+                <span>Applicable Products</span>
+                <select name="applicable_product_ids" multiple size="7">
+                    {% for product in products %}
+                    <option value="{{ product.id }}" {% if product.id in selected_product_ids %}selected{% endif %}>
+                        {{ product.name }} - {{ product.product_type|title }} - Rs.{{ product.price }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label>
+                <span>Minimum Quantity Required</span>
+                <input type="number" min="0" name="min_quantity_required" value="{{ field_value('min_quantity_required', coupon.min_quantity_required if coupon and coupon.min_quantity_required is not none else '') }}">
+            </label>
+
+            <label>
+                <span>Required Product Price</span>
+                <input type="number" step="0.01" min="0" name="required_product_price" value="{{ field_value('required_product_price', coupon.required_product_price if coupon and coupon.required_product_price is not none else '') }}">
+            </label>
+
+            <label>
+                <span>Final Payable Amount</span>
+                <input type="number" step="0.01" min="0" name="final_payable_amount" value="{{ field_value('final_payable_amount', coupon.final_payable_amount if coupon and coupon.final_payable_amount is not none else '') }}">
             </label>
 
             <label>
@@ -75,29 +132,33 @@
             </label>
 
             <label>
-                <span>Per User Limit</span>
+                <span>Per Customer Usage Limit</span>
                 <input type="number" min="0" name="per_user_limit" value="{{ field_value('per_user_limit', coupon.per_user_limit if coupon and coupon.per_user_limit is not none else 1) }}">
             </label>
 
             <label>
-                <span>Product Page Priority (higher shows first)</span>
+                <span>Start Date</span>
+                <input type="date" name="valid_from" value="{{ field_value('valid_from', coupon.valid_from.strftime('%Y-%m-%d') if coupon and coupon.valid_from else '') }}">
+            </label>
+
+            <label>
+                <span>Expiry Date</span>
+                <input type="date" name="valid_until" value="{{ field_value('valid_until', coupon.valid_until.strftime('%Y-%m-%d') if coupon and coupon.valid_until else '') }}">
+            </label>
+
+            <label>
+                <span>Product Page Priority</span>
                 <input type="number" name="product_page_priority" value="{{ field_value('product_page_priority', coupon.product_page_priority if coupon and coupon.product_page_priority is not none else 0) }}">
             </label>
         </div>
 
         <div class="coupon-checks">
-            <label>
-                <input type="checkbox" name="first_order_only" {% if form_data and form_data.get('first_order_only') or (not form_data and coupon and coupon.first_order_only) %}checked{% endif %}>
-                <span>First Order Only</span>
-            </label>
-            <label>
-                <input type="checkbox" name="is_active" {% if form_data and form_data.get('is_active') or (not form_data and (not coupon or coupon.is_active)) %}checked{% endif %}>
-                <span>Active</span>
-            </label>
-            <label>
-                <input type="checkbox" name="show_on_product_page" {% if form_data and form_data.get('show_on_product_page') or (not form_data and coupon and coupon.show_on_product_page) %}checked{% endif %}>
-                <span>Show on Product Page</span>
-            </label>
+            <label><input type="checkbox" name="first_order_only" {% if form_data and form_data.get('first_order_only') or (not form_data and coupon and coupon.first_order_only) %}checked{% endif %}> <span>First Order Only</span></label>
+            <label><input type="checkbox" name="one_time_per_customer" {% if form_data and form_data.get('one_time_per_customer') or (not form_data and (not coupon or coupon.one_time_per_customer)) %}checked{% endif %}> <span>One Time Use Per Customer</span></label>
+            <label><input type="checkbox" name="is_active" {% if form_data and form_data.get('is_active') or (not form_data and (not coupon or coupon.is_active)) %}checked{% endif %}> <span>Active</span></label>
+            <label><input type="checkbox" name="auto_apply" {% if form_data and form_data.get('auto_apply') or (not form_data and coupon and coupon.auto_apply) %}checked{% endif %}> <span>Auto Apply</span></label>
+            <label><input type="checkbox" name="allow_combination" {% if form_data and form_data.get('allow_combination') or (not form_data and coupon and coupon.allow_combination) %}checked{% endif %}> <span>Allow Combination</span></label>
+            <label><input type="checkbox" name="show_on_product_page" {% if form_data and form_data.get('show_on_product_page') or (not form_data and coupon and coupon.show_on_product_page) %}checked{% endif %}> <span>Show on Product Page</span></label>
         </div>
 
         <button type="submit">{{ 'Update Coupon' if is_edit else 'Create Coupon' }}</button>
@@ -112,17 +173,20 @@
 .coupon-form-header a { color: #0A5C56; text-decoration: none; }
 .coupon-alert { margin-bottom: 14px; padding: 12px 14px; border: 1px solid rgba(10,92,86,0.22); color: #0A5C56; background: rgba(10,92,86,0.06); }
 .coupon-alert.error { border-color: rgba(180,35,24,0.25); color: #b42318; background: rgba(180,35,24,0.06); }
-.coupon-form-card { border: 1px solid #e5e7eb; padding: 22px; max-width: 980px; }
+.coupon-form-card { border: 1px solid #e5e7eb; padding: 22px; max-width: 1080px; }
 .coupon-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.wide-field { grid-column: 1 / -1; }
 .coupon-form-card label span { display: block; color: #083E3A; font-size: 13px; margin-bottom: 7px; }
 .coupon-form-card input,
-.coupon-form-card select {
+.coupon-form-card select,
+.coupon-form-card textarea {
     width: 100%;
     padding: 12px 13px;
     border: 1px solid #d9dedc;
     border-radius: 0;
     font-family: 'Jost', sans-serif;
 }
+.coupon-form-card textarea { min-height: 84px; resize: vertical; }
 .coupon-checks { display: flex; flex-wrap: wrap; gap: 18px; margin: 18px 0; }
 .coupon-checks label { display: inline-flex; align-items: center; gap: 8px; }
 .coupon-checks input { width: auto; }
@@ -139,6 +203,7 @@
     .coupon-form-page { padding: 20px 12px; }
     .coupon-form-header { align-items: flex-start; flex-direction: column; }
     .coupon-form-grid { grid-template-columns: 1fr; }
+    .wide-field { grid-column: auto; }
 }
 </style>
 

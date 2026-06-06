@@ -91,21 +91,21 @@
 <div class="coupon-box">
     <label for="couponCode">Coupon Code</label>
     <div class="coupon-input-row">
-        <input id="couponCode" type="text" autocomplete="off">
+        <input id="couponCode" type="text" autocomplete="off" value="{{ coupon_result.coupon_code if coupon_result and coupon_result.coupon_code else '' }}">
         <button type="button" class="coupon-apply-btn cart-coupon-apply-btn" onclick="applyCoupon()">Apply</button>
         <button type="button" class="coupon-remove-btn cart-coupon-remove-btn" onclick="removeCoupon()">Remove</button>
     </div>
-    <p id="couponMessage" class="coupon-message"></p>
+    <p id="couponMessage" class="coupon-message {% if coupon_result and coupon_result.coupon_code %}success{% endif %}">{{ coupon_result.message if coupon_result and coupon_result.coupon_code else '' }}</p>
 </div>
 
-<div class="summary-row" id="couponDiscountRow" style="display:none;">
+<div class="summary-row" id="couponDiscountRow" style="{% if not coupon_result or not coupon_result.discount_amount %}display:none;{% endif %}">
     <span>Coupon Discount</span>
-    <span id="couponDiscount">- ₹0</span>
+    <span id="couponDiscount">- ₹{{ coupon_result.discount_amount|int if coupon_result else 0 }}</span>
 </div>
 
 <div class="summary-row total">
     <span>You Pay</span>
-   <span id="finalTotal">₹{{ total }}</span>
+   <span id="finalTotal">₹{{ coupon_result.final_amount|int if coupon_result else total }}</span>
 </div>
 
          <span id="subtotal" hidden>{{ total }}</span>

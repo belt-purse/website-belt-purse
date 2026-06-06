@@ -5,6 +5,13 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 
+coupon_products = db.Table(
+    "coupon_products",
+    db.Column("coupon_id", db.Integer, db.ForeignKey("coupons.id"), primary_key=True),
+    db.Column("product_id", db.Integer, db.ForeignKey("products.id"), primary_key=True),
+)
+
+
 class Wishlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -197,6 +204,8 @@ class Order(db.Model):
     discount_amount = db.Column(db.Float, default=0)
     final_amount = db.Column(db.Float)
     coupon_code = db.Column(db.String(50))
+    applied_coupon_code = db.Column(db.String(50))
+    coupon_discount_amount = db.Column(db.Float, default=0)
     status = db.Column(db.String(50), default='Pending')
     order_status = db.Column(db.String(50), default='Pending')
     payment_status = db.Column(db.String(50), default='Pending')
@@ -219,21 +228,38 @@ class Coupon(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), unique=True, nullable=False)
     title = db.Column(db.String(255))
+    description = db.Column(db.Text)
+    coupon_type = db.Column(db.String(50), default="fixed_amount")
     discount_type = db.Column(db.String(20), default="fixed")
     discount_value = db.Column(db.Float, nullable=False, default=0)
     min_order_amount = db.Column(db.Float, nullable=True)
     max_discount_amount = db.Column(db.Float, nullable=True)
+    applicable_category_id = db.Column(db.Integer, db.ForeignKey("category.id"), nullable=True)
+    applicable_category = db.Column(db.String(50), default="all")
+    min_quantity_required = db.Column(db.Integer, nullable=True)
+    required_product_price = db.Column(db.Float, nullable=True)
+    final_payable_amount = db.Column(db.Float, nullable=True)
     valid_from = db.Column(db.Date, nullable=True)
     valid_until = db.Column(db.Date, nullable=True)
     usage_limit = db.Column(db.Integer, nullable=True)
     used_count = db.Column(db.Integer, default=0)
     per_user_limit = db.Column(db.Integer, default=1)
     first_order_only = db.Column(db.Boolean, default=False)
+    one_time_per_customer = db.Column(db.Boolean, default=True)
+    auto_apply = db.Column(db.Boolean, default=False)
+    allow_combination = db.Column(db.Boolean, default=False)
     show_on_product_page = db.Column(db.Boolean, default=False)
     product_page_priority = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    applicable_products = db.relationship(
+        "Product",
+        secondary=coupon_products,
+        backref=db.backref("applicable_coupons", lazy="dynamic"),
+    )
+    category = db.relationship("Category")
 
 
 class CouponUsage(db.Model):

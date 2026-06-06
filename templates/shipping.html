@@ -1,20 +1,73 @@
 {% extends "base.html" %}
+{% block title %}Shipping Policy | Belt Purse Store{% endblock %}
+{% block meta_description %}Shipping policy for Belt Purse Store orders across India, including delivery time, processing time, tracking, and support.{% endblock %}
 {% block content %}
 
 <section class="policy-page">
-    <h1>Shipping Policy</h1>
+    <div class="policy-shell">
+        <div class="policy-hero">
+            <p>Order Delivery</p>
+            <h1>Shipping Policy</h1>
+        </div>
 
-    <p>We offer fast and reliable shipping across India.</p>
+        <div class="policy-card">
+            <p class="policy-lead">
+                We offer fast and reliable shipping across India. Once your order is placed, our team carefully checks, packs, and dispatches your product to ensure it reaches you safely.
+            </p>
 
-    <h3>Delivery Time</h3>
-    <p>Orders are delivered within 3–7 business days.</p>
+            <div class="policy-section">
+                <h2>Delivery Time</h2>
+                <p>Orders are usually delivered within 3-7 business days after dispatch. Delivery time may vary depending on your location, courier service availability, and any unexpected delays during transit.</p>
+            </div>
 
-    <h3>Processing Time</h3>
-    <p>Orders are processed within 24 hours.</p>
+            <div class="policy-section">
+                <h2>Processing Time</h2>
+                <p>All orders are processed within 24 hours after order confirmation. Once your order is processed and shipped, you will receive the delivery details or tracking update.</p>
+            </div>
 
-    <h3>Shipping Charges</h3>
-    <p>Free shipping on all prepaid orders.</p>
+            <div class="policy-section">
+                <h2>Shipping Charges</h2>
+                <p>We offer free shipping on all prepaid orders.</p>
+            </div>
 
+            <div class="policy-section">
+                <h2>Order Tracking</h2>
+                <p>After your order is shipped, you will be able to track your order through the tracking details shared with you. In case you do not receive tracking information, you can contact us for help.</p>
+            </div>
+
+            <div class="policy-contact">
+                <h2>Delivery Support</h2>
+                <p>If your order is delayed or you face any delivery issue, you can contact us through:</p>
+                <p><strong>Email:</strong> beltpurse.com@gmail.com</p>
+                <p><strong>WhatsApp:</strong> +91 7000747936</p>
+                <p>Our team will check the issue and help you with the delivery update.</p>
+            </div>
+        </div>
+    </div>
 </section>
+
+<style>
+.policy-page { background: #efefef; padding: 48px 18px 70px; }
+.policy-shell { max-width: 980px; margin: 0 auto; }
+.policy-hero { padding: 34px 0 24px; border-bottom: 1px solid rgba(10,92,86,0.16); }
+.policy-hero p { margin: 0 0 8px; color: #0A5C56; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+.policy-hero h1 { margin: 0; color: #102d2a; font-size: clamp(32px, 5vw, 54px); font-weight: 500; letter-spacing: 0; }
+.policy-card { margin-top: 28px; background: #fff; border: 1px solid rgba(10,92,86,0.12); padding: clamp(22px, 4vw, 42px); }
+.policy-lead { margin: 0 0 26px; color: #24413e; font-size: 18px; line-height: 1.75; }
+.policy-section { margin-top: 28px; }
+.policy-section h2,
+.policy-contact h2 { margin: 0 0 12px; color: #083E3A; font-size: 22px; font-weight: 500; }
+.policy-section p,
+.policy-contact p { color: #38504d; font-size: 16px; line-height: 1.75; }
+.policy-contact { margin-top: 30px; padding: 22px; background: #f8faf9; border: 1px solid rgba(10,92,86,0.14); }
+.policy-contact p { margin: 8px 0; }
+@media (max-width: 640px) {
+    .policy-page { padding: 26px 12px 46px; }
+    .policy-card { padding: 20px 16px; }
+    .policy-lead { font-size: 16px; }
+    .policy-section h2,
+    .policy-contact h2 { font-size: 19px; }
+}
+</style>
 
 {% endblock %}
