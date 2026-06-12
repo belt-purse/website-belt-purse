@@ -29,6 +29,12 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Homepage/index product display limits. Admins choose products; developers
+    # control these limits from code/config.
+    INDEX_BELTS_LIMIT = int(os.environ.get("INDEX_BELTS_LIMIT", 3))
+    INDEX_WALLETS_LIMIT = int(os.environ.get("INDEX_WALLETS_LIMIT", 5))
+    INDEX_MOBILE_PRODUCTS_LIMIT = int(os.environ.get("INDEX_MOBILE_PRODUCTS_LIMIT", 4))
+
     # File uploads
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "static/images")

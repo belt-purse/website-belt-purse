@@ -18,6 +18,19 @@
         <a href="{{ add_url or '/admin/products/add' }}" class="add-btn">+ Add {{ singular_label or 'Product' }}</a>
     </div>
 
+    <div class="homepage-toolbar">
+        <div>
+            <strong>Homepage {{ plural_label or 'Products' }}</strong>
+            <span id="homepageCount">{{ homepage_selected_count or 0 }}</span> / {{ homepage_limit }} selected
+        </div>
+        <div class="homepage-filters">
+            <a href="{{ list_url }}" class="{% if homepage_filter != 'homepage' %}active{% endif %}">All</a>
+            <a href="{{ list_url }}?filter=homepage" class="{% if homepage_filter == 'homepage' %}active{% endif %}">
+                {% if product_type == 'wallet' %}Wallets on Homepage{% else %}Belts on Homepage{% endif %}
+            </a>
+        </div>
+    </div>
+
     <div class="product-grid">
         {% for p in products %}
         <div class="product-card">
@@ -109,6 +122,10 @@
         {% if p.is_archived %}
         <span class="archive-badge">Archived</span>
         {% endif %}
+
+        {% if p.show_on_homepage %}
+        <span class="homepage-badge">Homepage #{{ p.homepage_sort_order or 0 }}</span>
+        {% endif %}
     </div>
 
     <div class="right-controls">
@@ -149,6 +166,25 @@
                     {% if p.original_price and p.original_price > p.price %}
                     <div class="old-price">&#8377;{{ p.original_price }}</div>
                     {% endif %}
+                </div>
+
+                <div class="homepage-list-control">
+                    <label class="homepage-list-switch">
+                        <input
+                            type="checkbox"
+                            {% if p.show_on_homepage %}checked{% endif %}
+                            onchange="toggleHomepage({{ p.id }}, this)"
+                        >
+                        <span>Show on Homepage</span>
+                    </label>
+                    <label class="homepage-order-field">
+                        Order
+                        <input
+                            type="number"
+                            value="{{ p.homepage_sort_order or 0 }}"
+                            onchange="updateHomepageOrder({{ p.id }}, this)"
+                        >
+                    </label>
                 </div>
 
                <div class="actions">
@@ -210,6 +246,41 @@
 .add-btn:hover {
     transform: translateY(-3px);
     box-shadow: 0 18px 40px rgba(10,92,86,0.5);
+}
+
+.homepage-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    margin: -18px 0 24px;
+    border: 1px solid #dbe4e3;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #111111;
+}
+
+.homepage-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.homepage-filters a {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    color: #0A5C56;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.homepage-filters a.active {
+    background: #0A5C56;
+    border-color: #0A5C56;
+    color: #ffffff;
 }
 
 .product-grid {
@@ -567,6 +638,43 @@
     border: 1px solid rgba(255, 77, 77, 0.22);
 }
 
+.homepage-badge {
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(10, 92, 86, 0.12);
+    color: #0A5C56;
+    font-size: 11px;
+    border: 1px solid rgba(10, 92, 86, 0.22);
+}
+
+.homepage-list-control {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 12px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+}
+
+.homepage-list-switch,
+.homepage-order-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #111111;
+    font-size: 13px;
+}
+
+.homepage-order-field input {
+    width: 76px;
+    padding: 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+}
+
 .archive-switch {
     position: relative;
     display: inline-block;
@@ -679,6 +787,69 @@ async function toggleArchive(productId, checkbox) {
         checkbox.checked = oldState;
         alert("Network error. Please try again.");
     }
+}
+
+async function saveHomepageState(productId, checkbox, orderInput) {
+    const previousChecked = checkbox.defaultChecked;
+    const previousOrder = orderInput ? orderInput.defaultValue : "0";
+    const formData = new FormData();
+    formData.append("show_on_homepage", checkbox.checked ? "true" : "false");
+    formData.append("homepage_sort_order", orderInput ? orderInput.value : "0");
+
+    try {
+        const response = await fetch(`/admin/products/homepage/${productId}`, {
+            method: "POST",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: formData
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            checkbox.checked = previousChecked;
+            if (orderInput) orderInput.value = previousOrder;
+            alert(data.message || "Could not update homepage setting.");
+            return;
+        }
+
+        const count = document.getElementById("homepageCount");
+        if (count) count.innerText = data.homepage_selected_count;
+        checkbox.defaultChecked = checkbox.checked;
+        if (orderInput) orderInput.defaultValue = orderInput.value;
+
+        const card = checkbox.closest(".product-card");
+        const titleWrap = card ? card.querySelector(".product-title-wrap") : null;
+        let badge = card ? card.querySelector(".homepage-badge") : null;
+
+        if (checkbox.checked) {
+            if (!badge && titleWrap) {
+                badge = document.createElement("span");
+                badge.className = "homepage-badge";
+                titleWrap.appendChild(badge);
+            }
+            if (badge) badge.innerText = `Homepage #${data.homepage_sort_order || 0}`;
+        } else if (badge) {
+            badge.remove();
+        }
+    } catch (error) {
+        checkbox.checked = previousChecked;
+        if (orderInput) orderInput.value = previousOrder;
+        alert("Network error. Please try again.");
+    }
+}
+
+function toggleHomepage(productId, checkbox) {
+    const card = checkbox.closest(".product-card");
+    const orderInput = card ? card.querySelector(".homepage-order-field input") : null;
+    saveHomepageState(productId, checkbox, orderInput);
+}
+
+function updateHomepageOrder(productId, input) {
+    const card = input.closest(".product-card");
+    const checkbox = card ? card.querySelector(".homepage-list-switch input") : null;
+    if (!checkbox) return;
+    saveHomepageState(productId, checkbox, input);
 }
 </script>
 {% endblock %}

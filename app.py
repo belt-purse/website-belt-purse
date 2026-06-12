@@ -162,6 +162,8 @@ def ensure_live_db_columns():
     ensure_column_exists("products", "size_type", "size_type VARCHAR(30) DEFAULT 'specific'")
     ensure_column_exists("products", "composition_care", "composition_care TEXT")
     ensure_column_exists("products", "additional_details", "additional_details TEXT")
+    ensure_column_exists("products", "show_on_homepage", "show_on_homepage BOOLEAN DEFAULT FALSE")
+    ensure_column_exists("products", "homepage_sort_order", "homepage_sort_order INTEGER DEFAULT 0")
     ensure_column_exists("colors", "hex_code", "hex_code VARCHAR(20)")
     ensure_column_exists("blog", "blog_date", "blog_date DATE")
     ensure_column_exists("orders", "coupon_code", "coupon_code VARCHAR(50)")
@@ -235,6 +237,18 @@ def ensure_live_db_columns():
                 WHERE size_type IS NULL OR size_type = ''
             """))
             print(f"SAFE DB MIGRATION: backfilled products.size_type rows={result.rowcount}")
+            result = conn.execute(text("""
+                UPDATE products
+                SET show_on_homepage = FALSE
+                WHERE show_on_homepage IS NULL
+            """))
+            print(f"SAFE DB MIGRATION: backfilled products.show_on_homepage rows={result.rowcount}")
+            result = conn.execute(text("""
+                UPDATE products
+                SET homepage_sort_order = 0
+                WHERE homepage_sort_order IS NULL
+            """))
+            print(f"SAFE DB MIGRATION: backfilled products.homepage_sort_order rows={result.rowcount}")
     else:
         print("SAFE DB MIGRATION: skipped products backfill; table does not exist")
 
@@ -2068,6 +2082,45 @@ def product_form_data():
     return request.form.to_dict(flat=True)
 
 
+def parse_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def homepage_product_limit(product_type):
+    product_type = normalize_product_type(product_type)
+    if product_type == "wallet":
+        return int(app.config.get("INDEX_WALLETS_LIMIT", 5))
+    return int(app.config.get("INDEX_BELTS_LIMIT", 3))
+
+
+def homepage_limit_message(product_type):
+    product_type = normalize_product_type(product_type)
+    label = "wallets" if product_type == "wallet" else "belts"
+    limit = homepage_product_limit(product_type)
+    return f"Homepage {label} limit is {limit}. Please remove another {label[:-1]} first."
+
+
+def homepage_selection_count(product_type, exclude_product_id=None):
+    query = Product.query.filter(
+        Product.product_type == normalize_product_type(product_type),
+        Product.show_on_homepage == True
+    )
+    if exclude_product_id:
+        query = query.filter(Product.id != exclude_product_id)
+    return query.count()
+
+
+def validate_homepage_selection(product_type, show_on_homepage, product_id=None):
+    if not show_on_homepage:
+        return None
+    if homepage_selection_count(product_type, product_id) >= homepage_product_limit(product_type):
+        return homepage_limit_message(product_type)
+    return None
+
+
 def selected_color_ids_from_request():
     selected = []
     for color_id in request.form.getlist("colors"):
@@ -2126,11 +2179,17 @@ def redirect_to_product_list(product):
 
 def admin_products_by_type(product_type):
     settings = product_type_settings(product_type)
+    homepage_filter = (request.args.get("filter") or "all").strip().lower()
     products = Product.query.options(
         db.joinedload(Product.images),
         db.joinedload(Product.videos), 
         db.joinedload(Product.product_colors).joinedload(ProductColor.color)
-    ).filter(Product.product_type == settings["product_type"]).order_by(Product.id.desc()).all()
+    ).filter(Product.product_type == settings["product_type"])
+
+    if homepage_filter == "homepage":
+        products = products.filter(Product.show_on_homepage == True)
+
+    products = products.order_by(Product.id.desc()).all()
 
     unique_products = []
     seen_product_ids = set()
@@ -2140,7 +2199,14 @@ def admin_products_by_type(product_type):
         unique_products.append(product)
         seen_product_ids.add(product.id)
 
-    return render_template("admin/products.html", products=unique_products, **settings)
+    return render_template(
+        "admin/products.html",
+        products=unique_products,
+        homepage_filter=homepage_filter,
+        homepage_limit=homepage_product_limit(settings["product_type"]),
+        homepage_selected_count=homepage_selection_count(settings["product_type"]),
+        **settings
+    )
 
 
 @app.route("/admin/products/belts")
@@ -2153,6 +2219,36 @@ def admin_belt_products():
 @admin_required
 def admin_wallet_products():
     return admin_products_by_type("wallet")
+
+
+@app.route("/admin/products/homepage/<int:id>", methods=["POST"])
+@admin_required
+def toggle_product_homepage(id):
+    product = Product.query.get_or_404(id)
+    product_type = normalize_product_type(product.product_type)
+    show_on_homepage = request.form.get("show_on_homepage") == "true"
+    sort_order = parse_int(request.form.get("homepage_sort_order"), product.homepage_sort_order or 0)
+
+    error = validate_homepage_selection(product_type, show_on_homepage, product.id)
+    if error:
+        return jsonify({
+            "success": False,
+            "message": error,
+            "show_on_homepage": bool(product.show_on_homepage),
+            "homepage_selected_count": homepage_selection_count(product_type),
+        }), 400
+
+    product.show_on_homepage = show_on_homepage
+    product.homepage_sort_order = sort_order
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "show_on_homepage": bool(product.show_on_homepage),
+        "homepage_sort_order": product.homepage_sort_order or 0,
+        "homepage_selected_count": homepage_selection_count(product_type),
+        "homepage_limit": homepage_product_limit(product_type),
+    })
 
 
 @app.route("/admin/colors", methods=["GET", "POST"])
@@ -2234,6 +2330,11 @@ def add_product():
             sizes, sizes_error = validate_belt_sizes(sizes)
             if sizes_error:
                 errors["sizes"] = sizes_error
+        show_on_homepage = bool(request.form.get("show_on_homepage"))
+        homepage_sort_order = parse_int(request.form.get("homepage_sort_order"), 0)
+        homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage)
+        if homepage_error:
+            errors["homepage"] = homepage_error
 
         if errors:
             colors = Color.query.order_by(Color.name.asc(), Color.id.asc()).all()
@@ -2244,6 +2345,8 @@ def add_product():
                 selected_color_ids=selected_color_ids,
                 errors=errors,
                 form_data=form_data,
+                homepage_limit=homepage_product_limit(settings["product_type"]),
+                homepage_selected_count=homepage_selection_count(settings["product_type"]),
                 **settings
             )
 
@@ -2275,7 +2378,9 @@ def add_product():
             material=material,
             description=description,
             composition_care=composition_care,
-            additional_details=additional_details
+            additional_details=additional_details,
+            show_on_homepage=show_on_homepage,
+            homepage_sort_order=homepage_sort_order
         )
 
         db.session.add(product)
@@ -2404,6 +2509,8 @@ def add_product():
         selected_color_ids=[],
         errors={},
         form_data={},
+        homepage_limit=homepage_product_limit(settings["product_type"]),
+        homepage_selected_count=homepage_selection_count(settings["product_type"]),
         **settings
     )
 @app.route("/admin/products/edit/<int:id>", methods=["GET", "POST"])
@@ -2437,6 +2544,11 @@ def edit_product(id):
             sizes_text, sizes_error = validate_belt_sizes(sizes_text)
             if sizes_error:
                 errors["sizes"] = sizes_error
+        show_on_homepage = bool(request.form.get("show_on_homepage"))
+        homepage_sort_order = parse_int(request.form.get("homepage_sort_order"), product.homepage_sort_order or 0)
+        homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage, product.id)
+        if homepage_error:
+            errors["homepage"] = homepage_error
 
         if errors:
             colors = Color.query.order_by(Color.name.asc(), Color.id.asc()).all()
@@ -2447,6 +2559,8 @@ def edit_product(id):
                 selected_color_ids=selected_color_ids,
                 errors=errors,
                 form_data=form_data,
+                homepage_limit=homepage_product_limit(settings["product_type"]),
+                homepage_selected_count=homepage_selection_count(settings["product_type"], product.id),
                 **settings
             )
 
@@ -2460,6 +2574,8 @@ def edit_product(id):
         product.composition_care = request.form.get("composition_care")
         product.additional_details = request.form.get("additional_details")
         product.size_unit = request.form.get("size_unit", "inch") if requires_size else None
+        product.show_on_homepage = show_on_homepage
+        product.homepage_sort_order = homepage_sort_order
 
         # =========================
         # PRICE
@@ -2649,6 +2765,8 @@ def edit_product(id):
         colors=colors,
         errors={},
         form_data={},
+        homepage_limit=homepage_product_limit(settings["product_type"]),
+        homepage_selected_count=homepage_selection_count(settings["product_type"], product.id),
         **settings
     )
 
@@ -3795,6 +3913,9 @@ def home():
         hero_slides=hero_slides,
         style_videos=style_videos,
         auto_slider_images=auto_slider_images,
+        index_belts_limit=int(app.config.get("INDEX_BELTS_LIMIT", 3)),
+        index_wallets_limit=int(app.config.get("INDEX_WALLETS_LIMIT", 5)),
+        index_mobile_products_limit=int(app.config.get("INDEX_MOBILE_PRODUCTS_LIMIT", 4)),
     )
 
 
@@ -4003,12 +4124,40 @@ from flask import jsonify
 
 @app.route('/products')
 def products():
-    all_products = Product.query.filter(
-        db.or_(
-            Product.is_archived == False,
-            Product.is_archived.is_(None)
-        )
-    ).all()
+    active_filter = db.or_(
+        Product.is_archived == False,
+        Product.is_archived.is_(None)
+    )
+
+    if request.args.get("homepage") == "1":
+        all_products = []
+        mobile_limit = int(app.config.get("INDEX_MOBILE_PRODUCTS_LIMIT", 4))
+        type_limits = {
+            "belt": max(int(app.config.get("INDEX_BELTS_LIMIT", 3)), mobile_limit),
+            "wallet": max(int(app.config.get("INDEX_WALLETS_LIMIT", 5)), mobile_limit),
+        }
+
+        for product_type, limit in type_limits.items():
+            selected = Product.query.filter(
+                active_filter,
+                Product.product_type == product_type,
+                Product.show_on_homepage == True
+            ).order_by(
+                Product.homepage_sort_order.asc(),
+                Product.id.desc()
+            ).limit(limit).all()
+
+            if not selected:
+                selected = Product.query.filter(
+                    active_filter,
+                    Product.product_type == product_type
+                ).order_by(Product.id.desc()).limit(limit).all()
+
+            all_products.extend(selected)
+    else:
+        all_products = Product.query.filter(
+            active_filter
+        ).all()
 
     result = []
 
@@ -4058,6 +4207,8 @@ def products():
                 "discount_percent": p.discount_percent or 0,
                 "rating": p.rating or 0,
                 "product_type": p.product_type or "belt",
+                "show_on_homepage": bool(p.show_on_homepage),
+                "homepage_sort_order": p.homepage_sort_order or 0,
                 "size_type": product_size_type(p),
                 "requires_size": requires_size,
 
@@ -4093,6 +4244,8 @@ def products():
                 "discount_percent": p.discount_percent or 0,
                 "rating": p.rating or 0,
                 "product_type": p.product_type or "belt",
+                "show_on_homepage": bool(p.show_on_homepage),
+                "homepage_sort_order": p.homepage_sort_order or 0,
                 "size_type": product_size_type(p),
                 "requires_size": requires_size,
 

@@ -86,6 +86,8 @@ class Product(db.Model):
     size_type = db.Column(db.String(30), default="specific")
     size_unit = db.Column(db.String(20), default="inch")
     is_archived = db.Column(db.Boolean, default=False)
+    show_on_homepage = db.Column(db.Boolean, default=False)
+    homepage_sort_order = db.Column(db.Integer, default=0)
     images = db.relationship('ProductImage', backref='product', cascade="all, delete")
     videos = db.relationship('ProductVideo', backref='product', cascade="all, delete")
     tags = db.relationship('ProductTag', backref='product', cascade="all, delete")

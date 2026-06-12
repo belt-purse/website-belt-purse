@@ -296,8 +296,19 @@ document.addEventListener("DOMContentLoaded", function () {
     updateCarousel();
 });
 
+const INDEX_BELTS_LIMIT = {{ index_belts_limit or 3 }};
+const INDEX_WALLETS_LIMIT = {{ index_wallets_limit or 5 }};
+const INDEX_MOBILE_PRODUCTS_LIMIT = {{ index_mobile_products_limit or 4 }};
+
+function getIndexLimit(type) {
+    if (window.matchMedia("(max-width: 768px)").matches) {
+        return INDEX_MOBILE_PRODUCTS_LIMIT;
+    }
+    return type === "wallet" ? INDEX_WALLETS_LIMIT : INDEX_BELTS_LIMIT;
+}
+
 window.loadProducts = function () {
-    fetch("/products")
+    fetch("/products?homepage=1")
         .then(response => response.json())
         .then(data => {
             const beltContainer = document.getElementById("beltProducts");
@@ -311,8 +322,8 @@ window.loadProducts = function () {
             const belts = products.filter(product => normalizeType(product) === "belt");
             const wallets = products.filter(product => normalizeType(product) === "wallet");
 
-            renderProductSet(beltContainer, belts.slice(0, 3), "Belt products are being updated.");
-            renderProductSet(walletContainer, wallets.slice(0, 5), "Premium wallets are coming soon");
+            renderProductSet(beltContainer, belts.slice(0, getIndexLimit("belt")), "Belt products are being updated.");
+            renderProductSet(walletContainer, wallets.slice(0, getIndexLimit("wallet")), "Premium wallets are coming soon");
         })
         .catch(error => console.error("Product load error:", error));
 };
