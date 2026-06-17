@@ -2,7 +2,7 @@ from collections import defaultdict
 from flask_login import login_required, current_user
 import cloudinary
 import cloudinary.uploader
-from flask import Flask, flash, render_template, request, jsonify, session, redirect, abort, url_for, make_response
+from flask import Flask, flash, render_template, request, jsonify, session, redirect, abort, url_for, make_response, has_request_context
 from sqlalchemy import exists, text,inspect
 from sqlalchemy.orm import joinedload
 from models import Address, Blog, Cart, Category, Color, Coupon, CouponUsage, EmailHistory, EmailTrack, HomepageMedia, Order, OrderItem, PasswordResetToken, ProductColor, ProductSize, Review, Tag, Warranty, db, User, Product, ProductImage, ProductVideo, ProductTag, PaymentMethod, WalletTransaction, Ticket
@@ -172,6 +172,7 @@ def ensure_live_db_columns():
     ensure_column_exists("orders", "coupon_discount_amount", "coupon_discount_amount DOUBLE PRECISION DEFAULT 0", "coupon_discount_amount FLOAT DEFAULT 0")
     ensure_column_exists("orders", "subtotal_amount", "subtotal_amount DOUBLE PRECISION", "subtotal_amount FLOAT")
     ensure_column_exists("orders", "final_amount", "final_amount DOUBLE PRECISION", "final_amount FLOAT")
+    ensure_column_exists("order_items", "product_name", "product_name VARCHAR(255)")
     ensure_column_exists("coupons", "discount_type", "discount_type VARCHAR(20) DEFAULT 'fixed'")
     ensure_column_exists("coupons", "discount_value", "discount_value DOUBLE PRECISION DEFAULT 0", "discount_value FLOAT DEFAULT 0")
     ensure_column_exists("coupons", "description", "description TEXT")
@@ -436,7 +437,11 @@ def load_user(user_id):
 
 
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
-ALLOWED_VIDEO_EXTENSIONS = {"mp4", "mov", "avi", "webm"}
+ALLOWED_VIDEO_EXTENSIONS = {"mp4", "mov", "webm"}
+MAX_PRODUCT_IMAGES_PER_UPLOAD = 5
+MAX_PRODUCT_VIDEOS_PER_UPLOAD = 2
+MAX_PRODUCT_IMAGE_BYTES = 3 * 1024 * 1024
+MAX_PRODUCT_VIDEO_BYTES = 20 * 1024 * 1024
 
 # Keep this for old local blog image fallback support
 BLOG_UPLOAD_SUBDIR = "uploads/blogs"
@@ -459,6 +464,59 @@ def allowed_file(filename, filetype="image"):
         return ext in ALLOWED_IMAGE_EXTENSIONS
     else:
         return ext in ALLOWED_VIDEO_EXTENSIONS
+
+
+def non_empty_uploads(field_name):
+    return [file for file in request.files.getlist(field_name) if file and file.filename]
+
+
+def product_media_uploads(filetype):
+    prefix = "color_images_" if filetype == "image" else "color_videos_"
+    default_field = "images" if filetype == "image" else "videos"
+    files = []
+    for field_name in request.files:
+        if field_name == default_field or field_name.startswith(prefix):
+            files.extend(non_empty_uploads(field_name))
+    return files
+
+
+def upload_size(file):
+    stream = getattr(file, "stream", None)
+    if not stream:
+        return int(getattr(file, "content_length", 0) or 0)
+
+    try:
+        current = stream.tell()
+        stream.seek(0, os.SEEK_END)
+        size = stream.tell()
+        stream.seek(current)
+        return size
+    except (AttributeError, OSError):
+        return int(getattr(file, "content_length", 0) or 0)
+
+
+def validate_product_media_uploads():
+    images = product_media_uploads("image")
+    videos = product_media_uploads("video")
+
+    if len(images) > MAX_PRODUCT_IMAGES_PER_UPLOAD:
+        return "You can upload maximum 5 images at a time."
+    if len(videos) > MAX_PRODUCT_VIDEOS_PER_UPLOAD:
+        return "You can upload maximum 2 videos at a time."
+
+    for image in images:
+        if not allowed_file(image.filename, "image"):
+            return "Only JPG, JPEG, PNG and WEBP image files are allowed."
+        if upload_size(image) > MAX_PRODUCT_IMAGE_BYTES:
+            return "Each image must be 3MB or smaller."
+
+    for video in videos:
+        if not allowed_file(video.filename, "video"):
+            return "Only MP4, WEBM and MOV video files are allowed."
+        if upload_size(video) > MAX_PRODUCT_VIDEO_BYTES:
+            return "Each video must be 20MB or smaller."
+
+    return None
 
 
 def save_blog_image(file):
@@ -542,7 +600,12 @@ def nullable_match_sql(column_name, param_name):
     return f"(({column_name} IS NULL AND :{param_name} IS NULL) OR {column_name}=:{param_name})"
 
 
-SUPPORT_EMAIL = os.environ.get("ADMIN_EMAIL") or os.environ.get("SUPPORT_EMAIL") or "beltpurse.com@gmail.com"
+SUPPORT_EMAIL = (
+    os.environ.get("STORE_EMAIL")
+    or os.environ.get("ADMIN_EMAIL")
+    or os.environ.get("SUPPORT_EMAIL")
+    or "beltpurse.com@gmail.com"
+)
 RESEND_FROM_EMAIL = (
     os.environ.get("MAIL_FROM")
     or os.environ.get("RESEND_FROM_EMAIL")
@@ -556,14 +619,75 @@ app.logger.info(
 )
 
 
+def send_flask_mail_email(subject, body="", attachments=None, to_email=None, html=None):
+    recipient = to_email or SUPPORT_EMAIL
+    sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
+    if not app.config.get("MAIL_SERVER"):
+        raise RuntimeError("MAIL_SERVER environment variable is not set")
+    if not sender:
+        raise RuntimeError("MAIL_DEFAULT_SENDER or MAIL_USERNAME environment variable is not set")
+
+    msg = Message(
+        subject=subject,
+        sender=sender,
+        recipients=[recipient],
+        body=body or "",
+        html=html
+    )
+
+    for attachment in attachments or []:
+        filename = attachment.get("filename") or attachment.get("name")
+        content = attachment.get("content")
+        content_type = attachment.get("content_type") or attachment.get("type") or "application/octet-stream"
+        if filename and content:
+            msg.attach(filename, content_type, content)
+
+    try:
+        mail.send(msg)
+        print("✅ Order email sent successfully")
+        app.logger.info("Email accepted by Flask-Mail for subject %s to %s", subject, recipient)
+        return {"provider": "flask-mail", "to": recipient}
+    except Exception as e:
+        print("❌ Order email failed:", str(e))
+        app.logger.exception("Flask-Mail email send failed for subject %s to %s", subject, recipient)
+        raise
+
+
 def json_error(message="Something went wrong", status_code=500):
+    app.logger.warning("API error %s: %s", status_code, message)
     return jsonify({"success": False, "message": message}), status_code
+
+
+def cart_json_error(message, status_code=400, **context):
+    app.logger.warning("Cart action failed status=%s message=%s context=%s", status_code, message, context)
+    payload = {"success": False, "message": message}
+    if context:
+        payload["context"] = context
+    return jsonify(payload), status_code
+
+
+MAX_CART_QUANTITY = 99
+
+
+def normalize_cart_quantity(quantity, default=1):
+    try:
+        normalized = int(quantity)
+    except (TypeError, ValueError):
+        normalized = default
+    return min(max(normalized, 1), MAX_CART_QUANTITY)
 
 
 def user_counts(user_id):
     cart_count = db.session.execute(text("""
-        SELECT COALESCE(SUM(quantity),0) FROM cart WHERE user_id=:uid
-    """), {"uid": user_id}).scalar() or 0
+        SELECT COALESCE(SUM(CASE
+            WHEN c.quantity IS NULL OR c.quantity < 1 THEN 1
+            WHEN c.quantity > :max_qty THEN :max_qty
+            ELSE c.quantity
+        END),0)
+        FROM cart c
+        JOIN products p ON p.id = c.product_id
+        WHERE c.user_id=:uid AND COALESCE(p.is_archived, FALSE) = FALSE
+    """), {"uid": user_id, "max_qty": MAX_CART_QUANTITY}).scalar() or 0
     wishlist_count = db.session.execute(text("""
         SELECT COUNT(*) FROM wishlist WHERE user_id=:uid
     """), {"uid": user_id}).scalar() or 0
@@ -572,11 +696,15 @@ def user_counts(user_id):
 
 def cart_totals_payload(user_id):
     bag_total = db.session.execute(text("""
-        SELECT COALESCE(SUM(p.price * c.quantity),0)
+        SELECT COALESCE(SUM(p.price * CASE
+            WHEN c.quantity IS NULL OR c.quantity < 1 THEN 1
+            WHEN c.quantity > :max_qty THEN :max_qty
+            ELSE c.quantity
+        END),0)
         FROM cart c
         JOIN products p ON p.id = c.product_id
-        WHERE c.user_id=:uid
-    """), {"uid": user_id}).scalar() or 0
+        WHERE c.user_id=:uid AND COALESCE(p.is_archived, FALSE) = FALSE
+    """), {"uid": user_id, "max_qty": MAX_CART_QUANTITY}).scalar() or 0
     bag_total = float(bag_total)
     discount = 0
     shipping = 0
@@ -622,7 +750,7 @@ def cart_item_total(cart_item):
     product = cart_item.product or Product.query.get(cart_item.product_id)
     if not product:
         return 0
-    return float(product.price or 0) * int(cart_item.quantity or 0)
+    return float(product.price or 0) * normalize_cart_quantity(cart_item.quantity)
 
 
 def cart_item_payload(cart_item):
@@ -633,14 +761,14 @@ def cart_item_payload(cart_item):
     if cart_item.size:
         size_label = cart_item.size.size_label
     elif product and product_size_type(product) == "universal":
-        size_label = "Universal Size"
+        size_label = "Universal"
     return {
         "cart_item_id": cart_item.id,
         "product_id": cart_item.product_id,
         "color_id": cart_item.color_id,
         "size_id": cart_item.size_id,
         "size_label": size_label,
-        "quantity": int(cart_item.quantity or 0),
+        "quantity": normalize_cart_quantity(cart_item.quantity),
         "item_total": cart_item_total(cart_item),
     }
 
@@ -648,10 +776,14 @@ def cart_item_payload(cart_item):
 def validate_cart_lines_for_checkout(cart_lines):
     for line in cart_lines or []:
         product = line.get("product")
-        if not product:
+        if not product or getattr(product, "is_archived", False):
             return False, "A product in your cart is no longer available."
+        if int(line.get("quantity") or 0) < 1:
+            return False, f"Invalid quantity for {product.name}."
         if product_requires_size(product.id) and not line.get("size_id"):
             return False, f"Please select a size for {product.name} before checkout."
+        if line.get("size_id") and not is_valid_product_size(product.id, line.get("size_id")):
+            return False, f"Invalid size selected for {product.name}."
     return True, None
 
 
@@ -661,6 +793,15 @@ def consolidate_cart_duplicates(user_id):
     changed = False
 
     for item in items:
+        product = item.product or Product.query.get(item.product_id)
+        if not product or product.is_archived:
+            continue
+
+        normalized_qty = normalize_cart_quantity(item.quantity)
+        if item.quantity != normalized_qty:
+            item.quantity = normalized_qty
+            changed = True
+
         if not product_requires_size(item.product_id) and item.size_id is not None:
             item.size_id = None
             changed = True
@@ -718,7 +859,7 @@ def parse_optional_int(value):
 
 
 def add_cart_item(user, product_id, color_id=None, size_id=None, quantity=1):
-    quantity = max(int(quantity or 1), 1)
+    quantity = normalize_cart_quantity(quantity)
     size_id = normalize_cart_size_id(product_id, size_id)
     clear_wallet_cart_sizes(product_id, user.id)
 
@@ -731,9 +872,9 @@ def add_cart_item(user, product_id, color_id=None, size_id=None, quantity=1):
 
     if existing_items:
         existing = existing_items[0]
-        existing.quantity = int(existing.quantity or 0) + quantity
+        existing.quantity = min(normalize_cart_quantity(existing.quantity) + quantity, MAX_CART_QUANTITY)
         for duplicate in existing_items[1:]:
-            existing.quantity += int(duplicate.quantity or 0)
+            existing.quantity = min(existing.quantity + normalize_cart_quantity(duplicate.quantity), MAX_CART_QUANTITY)
             db.session.delete(duplicate)
         return existing
 
@@ -892,12 +1033,15 @@ def merge_session_guest_cart_to_user(user):
 
 
 def send_resend_email(subject, body="", attachments=None, to_email=None, html=None):
-    if resend is None:
-        raise RuntimeError("resend package is not installed. Run: pip install resend")
-
     api_key = os.environ.get("RESEND_API_KEY")
-    if not api_key:
-        raise RuntimeError("RESEND_API_KEY environment variable is not set")
+    if not api_key or resend is None:
+        return send_flask_mail_email(
+            subject,
+            body=body,
+            attachments=attachments,
+            to_email=to_email,
+            html=html
+        )
 
     resend.api_key = api_key
     params = {
@@ -918,12 +1062,15 @@ def send_resend_email(subject, body="", attachments=None, to_email=None, html=No
 
 
 def send_resend_email_safe(subject, body="", attachments=None, to_email=None, html=None):
+    recipient = to_email or SUPPORT_EMAIL
     try:
         result = send_resend_email(subject, body=body, attachments=attachments, to_email=to_email, html=html)
-        app.logger.info("Email accepted by Resend for subject %s to %s", subject, to_email or SUPPORT_EMAIL)
+        print(f"✅ Order email sent successfully: subject={subject} to={recipient}")
+        app.logger.info("Email accepted for subject %s to %s", subject, recipient)
         return True, result
-    except Exception:
-        app.logger.exception("Email send failed for subject %s to %s", subject, to_email or SUPPORT_EMAIL)
+    except Exception as exc:
+        print("❌ Order email failed:", str(exc))
+        app.logger.exception("Email send failed for subject %s to %s", subject, recipient)
         return False, None
 
 
@@ -958,21 +1105,39 @@ def cart_snapshot_for_user(user_id):
 
     for cart_item in cart_items:
         product = cart_item.product or Product.query.get(cart_item.product_id)
-        if not product:
+        quantity = normalize_cart_quantity(cart_item.quantity)
+        if cart_item.quantity != quantity:
+            cart_item.quantity = quantity
+            db.session.flush()
+
+        if not product or product.is_archived:
+            order_lines.append({
+                "product": None,
+                "product_id": cart_item.product_id,
+                "size_id": cart_item.size_id,
+                "color_id": cart_item.color_id,
+                "quantity": quantity,
+                "price": 0,
+                "item_total": 0,
+                "cart_item_id": cart_item.id,
+                "unavailable": True,
+            })
             continue
 
-        quantity = int(cart_item.quantity or 1)
         price = float(product.price or 0)
         item_total = price * quantity
         total += item_total
         order_lines.append({
             "product": product,
             "product_id": product.id,
+            "product_name": product.name,
             "size_id": cart_item.size_id,
             "color_id": cart_item.color_id,
             "quantity": quantity,
             "price": price,
             "item_total": item_total,
+            "cart_item_id": cart_item.id,
+            "unavailable": False,
         })
 
     return order_lines, total
@@ -1325,6 +1490,11 @@ def apply_coupon():
         }), 400
 
     cart_lines, subtotal = cart_snapshot_for_user(user.id)
+    cart_valid, cart_error = validate_cart_lines_for_checkout(cart_lines)
+    if not cart_valid:
+        session.pop("coupon_code", None)
+        session.modified = True
+        return json_error(cart_error, 400)
     if subtotal <= 0:
         return json_error("Cart is empty", 400)
 
@@ -1409,6 +1579,7 @@ def create_pending_order_from_cart(user, selected_address, payment_method="Razor
         db.session.add(OrderItem(
             order_id=order.id,
             product_id=line["product_id"],
+            product_name=line.get("product_name") or (line["product"].name if line.get("product") else None),
             size_id=line["size_id"],
             color_id=line["color_id"],
             quantity=line["quantity"],
@@ -1431,6 +1602,56 @@ def reusable_pending_order(user_id, address_id, total, coupon_code=None):
         Order.total_amount == total,
         Order.coupon_code == coupon_code
     ).order_by(Order.id.desc()).first()
+
+
+def order_matches_cart_lines(order, cart_lines):
+    if not order:
+        return False
+
+    order_items = OrderItem.query.filter_by(order_id=order.id).all()
+    if len(order_items) != len(cart_lines or []):
+        return False
+
+    def key_from_values(product_id, color_id, size_id, quantity, price):
+        return (
+            int(product_id or 0),
+            int(color_id) if color_id is not None else None,
+            int(size_id) if size_id is not None else None,
+            int(quantity or 0),
+            round(float(price or 0), 2),
+        )
+
+    order_keys = sorted(
+        key_from_values(item.product_id, item.color_id, item.size_id, item.quantity, item.price)
+        for item in order_items
+    )
+    cart_keys = sorted(
+        key_from_values(line.get("product_id"), line.get("color_id"), line.get("size_id"), line.get("quantity"), line.get("price"))
+        for line in cart_lines or []
+    )
+    return order_keys == cart_keys
+
+
+def validate_delivery_address(address):
+    if not address:
+        return False, "No address found"
+    required = {
+        "full_name": address.full_name,
+        "phone": address.phone,
+        "address_line": address.address_line,
+        "city": address.city,
+        "state": address.state,
+        "pincode": address.pincode,
+    }
+    missing = [field for field, value in required.items() if not (value or "").strip()]
+    if missing:
+        return False, f"Please complete address fields: {', '.join(missing)}"
+    if not re.fullmatch(r"[6-9]\d{9}", (address.phone or "").strip()):
+        return False, "Please enter a valid 10 digit phone number"
+    if not re.fullmatch(r"\d{6}", (address.pincode or "").strip()):
+        return False, "Please enter a valid 6 digit pincode"
+    return True, None
+
 
 def verify_razorpay_signature(razorpay_order_id, razorpay_payment_id, razorpay_signature):
     key_secret = app.config.get("RAZORPAY_KEY_SECRET")
@@ -1557,7 +1778,7 @@ def check_razorpay_order_status():
 def build_order_email_lines(order):
     lines = []
     for item in order.items:
-        product_name = item.product.name if item.product else f"Product #{item.product_id}"
+        product_name = item.product_name or (item.product.name if item.product else f"Product #{item.product_id}")
         if item.size:
             size_label = f", Size: {item.size.size_label}"
         elif item.product and product_size_type(item.product) == "universal":
@@ -1565,10 +1786,24 @@ def build_order_email_lines(order):
         else:
             size_label = ""
         color_name = f", Color: {item.color.name}" if item.color else ""
+        line_total = float(item.price or 0) * int(item.quantity or 0)
         lines.append(
-            f"{product_name}{size_label}{color_name} x {item.quantity} - INR {item.price * item.quantity}"
+            f"{product_name}{size_label}{color_name}, Quantity: {item.quantity} - INR {line_total:.2f}"
         )
     return lines
+
+
+def money(value):
+    return f"INR {float(value or 0):.2f}"
+
+
+def order_shipping_amount(order):
+    return max(
+        float(order.final_amount or order.total_amount or 0)
+        - float(order.subtotal_amount or 0)
+        + float(order.discount_amount or 0),
+        0
+    )
 
 
 def format_order_address(order):
@@ -1597,11 +1832,37 @@ def order_item_image_url(item):
 app.jinja_env.globals["order_item_image_url"] = order_item_image_url
 
 
+def product_variant_image_url(product_id, color_id=None):
+    image = None
+    if color_id:
+        image = ProductImage.query.filter_by(
+            product_id=product_id,
+            color_id=color_id
+        ).order_by(ProductImage.is_primary.desc(), ProductImage.id.asc()).first()
+    if not image:
+        image = ProductImage.query.filter_by(
+            product_id=product_id,
+            color_id=None
+        ).order_by(ProductImage.is_primary.desc(), ProductImage.id.asc()).first()
+    if not image:
+        image = ProductImage.query.filter_by(product_id=product_id).order_by(
+            ProductImage.is_primary.desc(),
+            ProductImage.id.asc()
+        ).first()
+    return image.image_url if image else DEFAULT_IMAGE_URL
+
+
 def send_paid_order_emails(order):
     address = Address.query.get(order.address_id) if order.address_id else None
     user = order.user
     item_lines = build_order_email_lines(order)
     address_text = format_order_address(order)
+    coupon_code = order.coupon_code or order.applied_coupon_code or "None"
+    shipping_amount = order_shipping_amount(order)
+    subtotal_amount = order.subtotal_amount if order.subtotal_amount is not None else sum(
+        float(item.price or 0) * int(item.quantity or 0) for item in order.items
+    )
+    final_amount = order.final_amount if order.final_amount is not None else order.total_amount
 
     admin_body = "\n".join([
         "New paid order received.",
@@ -1611,7 +1872,11 @@ def send_paid_order_emails(order):
         f"Email: {user.email if user else ''}",
         f"Phone: {address.phone if address else (user.phone if user else '')}",
         f"Full Address: {address_text}",
-        f"Amount: INR {order.total_amount}",
+        f"Subtotal: {money(subtotal_amount)}",
+        f"Coupon Code: {coupon_code}",
+        f"Coupon Discount: {money(order.discount_amount)}",
+        f"Shipping: {money(shipping_amount)}",
+        f"Final Amount: {money(final_amount)}",
         f"Razorpay Payment ID: {order.razorpay_payment_id or ''}",
         f"Razorpay Order ID: {order.razorpay_order_id or ''}",
         f"Payment Status: {order.payment_status}",
@@ -1625,7 +1890,11 @@ def send_paid_order_emails(order):
         "",
         f"Your BeltPurse order #{order.id} is confirmed.",
         f"Order ID: {order.id}",
-        f"Amount: INR {order.total_amount}",
+        f"Subtotal: {money(subtotal_amount)}",
+        f"Coupon Code: {coupon_code}",
+        f"Coupon Discount: {money(order.discount_amount)}",
+        f"Shipping: {money(shipping_amount)}",
+        f"Final Amount: {money(final_amount)}",
         f"Payment Status: {order.payment_status}",
         f"Order Status: {order.order_status}",
         f"Delivery Address: {address_text}",
@@ -1633,20 +1902,29 @@ def send_paid_order_emails(order):
         *item_lines,
     ])
 
-    try:
-        send_resend_email("New Paid Order Received - BeltPurse", admin_body)
-    except Exception as exc:
-        app.logger.error("Admin paid order email failed for order %s: %s", order.id, exc)
+    admin_sent, _ = send_resend_email_safe(
+        "New Paid Order Received - BeltPurse",
+        admin_body,
+        to_email=SUPPORT_EMAIL
+    )
 
+    customer_sent = False
     if user and user.email:
-        try:
-            send_resend_email(
-                "Your BeltPurse Order is Confirmed",
-                customer_body,
-                to_email=user.email
-            )
-        except Exception as exc:
-            app.logger.error("Customer paid order email failed for order %s: %s", order.id, exc)
+        customer_sent, _ = send_resend_email_safe(
+            "Your BeltPurse Order is Confirmed",
+            customer_body,
+            to_email=user.email
+        )
+    else:
+        app.logger.warning("Customer paid order email skipped for order %s because user email is missing", order.id)
+
+    if not admin_sent or not customer_sent:
+        app.logger.warning(
+            "Paid order email delivery incomplete for order %s: admin_sent=%s customer_sent=%s",
+            order.id,
+            admin_sent,
+            customer_sent
+        )
 
 
 def build_order_status_email(order):
@@ -1729,7 +2007,7 @@ def mark_order_paid(order, razorpay_payment_id=None, razorpay_signature=None, se
                 ))
                 coupon.used_count = coupon_usage_count(coupon.id) + 1
                 coupon.updated_at = datetime.utcnow()
-        if session.get("coupon_code") == (order.coupon_code or ""):
+        if has_request_context() and session.get("coupon_code") == (order.coupon_code or ""):
             session.pop("coupon_code", None)
             session.modified = True
 
@@ -2387,6 +2665,9 @@ def add_product():
         homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage)
         if homepage_error:
             errors["homepage"] = homepage_error
+        media_error = validate_product_media_uploads()
+        if media_error:
+            errors["media"] = media_error
 
         if errors:
             colors = Color.query.order_by(Color.name.asc(), Color.id.asc()).all()
@@ -2537,6 +2818,23 @@ def add_product():
                         color_id=int(color_id)
                     ))
 
+        default_videos = request.files.getlist("videos")
+
+        for vid in default_videos:
+            if vid and allowed_file(vid.filename, "video"):
+
+                result = cloudinary.uploader.upload(
+                    vid,
+                    resource_type="video",
+                    folder="products/videos"
+                )
+
+                db.session.add(ProductVideo(
+                    product_id=product.id,
+                    video_url=result["secure_url"],
+                    color_id=None
+                ))
+
         # =========================
         # 🏷 TAGS
         # =========================
@@ -2601,6 +2899,9 @@ def edit_product(id):
         homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage, product.id)
         if homepage_error:
             errors["homepage"] = homepage_error
+        media_error = validate_product_media_uploads()
+        if media_error:
+            errors["media"] = media_error
 
         if errors:
             colors = Color.query.order_by(Color.name.asc(), Color.id.asc()).all()
@@ -2766,6 +3067,23 @@ def edit_product(id):
                         video_url=result["secure_url"],
                         color_id=int(color_id)
                     ))
+
+        default_videos = request.files.getlist("videos")
+
+        for vid in default_videos:
+            if vid and allowed_file(vid.filename, "video"):
+
+                result = cloudinary.uploader.upload(
+                    vid,
+                    resource_type="video",
+                    folder="products/videos"
+                )
+
+                db.session.add(ProductVideo(
+                    product_id=id,
+                    video_url=result["secure_url"],
+                    color_id=None
+                ))
 
         # =========================
         # SIZES
@@ -3825,6 +4143,7 @@ def create_order(user_id, cart_items, address_id):
         order_item = OrderItem(
             order_id=order.id,
             product_id=item['id'],
+            product_name=item.get('name') or item.get('product_name'),
             quantity=item['qty'],
             price=item['price']
         )
@@ -4275,6 +4594,8 @@ def products():
         # 🎨 CASE 2: COLOR VARIANTS
         # =========================
         for pc in p.product_colors:
+            if not pc.color:
+                continue
 
             imgs = color_images.get(pc.color_id)
 
@@ -4771,14 +5092,15 @@ def cart_page():
     rows = db.session.execute(text("""
         SELECT 
             c.id AS cart_id,
-            p.id,
-            p.name,
-            p.price,
+            c.product_id AS id,
+            COALESCE(p.name, 'This product is no longer available.') AS name,
+            COALESCE(p.price, 0) AS price,
+            CASE WHEN p.id IS NULL OR COALESCE(p.is_archived, FALSE) = TRUE THEN TRUE ELSE FALSE END AS unavailable,
             c.color_id,
             c.size_id,
             CASE
                 WHEN LOWER(COALESCE(p.product_type, 'belt')) = 'belt'
-                     AND LOWER(COALESCE(p.size_type, 'specific')) = 'universal' THEN 'Universal Size'
+                     AND LOWER(COALESCE(p.size_type, 'specific')) = 'universal' THEN 'Universal'
                 ELSE COALESCE(ps.size_label, '')
             END AS size_label,
             COALESCE(co.name, '') AS color_name,
@@ -4802,14 +5124,18 @@ def cart_page():
                  WHERE pi.product_id = p.id
                  ORDER BY pi.id LIMIT 1)
             ) AS image_url,
-            c.quantity
+            CASE
+                WHEN c.quantity IS NULL OR c.quantity < 1 THEN 1
+                WHEN c.quantity > :max_qty THEN :max_qty
+                ELSE c.quantity
+            END AS quantity
         FROM cart c
-        JOIN products p ON c.product_id = p.id
+        LEFT JOIN products p ON c.product_id = p.id
         LEFT JOIN colors co ON co.id = c.color_id
         LEFT JOIN product_sizes ps ON ps.id = c.size_id
         WHERE c.user_id = :uid
         ORDER BY c.id ASC
-    """), {"uid": user.id}).fetchall()
+    """), {"uid": user.id, "max_qty": MAX_CART_QUANTITY}).fetchall()
 
     total = 0
     total_items = 0
@@ -4822,8 +5148,10 @@ def cart_page():
         price = int(p['price']) if p['price'] else 0
         qty = int(p['quantity']) if p['quantity'] else 0
 
-        total += price * qty
-        total_items += qty
+        unavailable = bool(p.get('unavailable'))
+        if not unavailable:
+            total += price * qty
+            total_items += qty
 
         clean_items.append({
             "cart_id": p['cart_id'],
@@ -4836,7 +5164,9 @@ def cart_page():
             "size_id": p['size_id'],
             "size_label": p['size_label'],
             "color_name": p['color_name'],
-            "color_code": p['color_code']
+            "color_code": p['color_code'],
+            "unavailable": unavailable,
+            "message": "This product is no longer available." if unavailable else ""
         })
 
     coupon_code = current_coupon_code()
@@ -4861,7 +5191,7 @@ def cart_page():
 @app.route('/remove_cart/<int:id>')
 def remove_cart(id):
     if 'email' not in session:
-        return jsonify({"success": False}), 401
+        return cart_json_error("Please login to continue", 401, product_id=id)
 
     user = User.query.filter_by(email=session['email']).first()
     cart_item_id = request_cart_item_id()
@@ -4869,7 +5199,7 @@ def remove_cart(id):
     if cart_item_id:
         cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
         if not cart_item:
-            return jsonify({"success": False, "message": "Cart item not found"}), 404
+            return cart_json_error("Cart item not found", 404, product_id=id, cart_item_id=cart_item_id, user_id=user.id)
         db.session.delete(cart_item)
     else:
         color_id = request_color_id()
@@ -4896,46 +5226,43 @@ def remove_cart(id):
 @app.route('/decrease_cart/<int:id>')
 def decrease_cart(id):
     if 'email' not in session:
-        return "Unauthorized", 401
+        return cart_json_error("Please login to continue", 401, product_id=id)
 
     user = User.query.filter_by(email=session['email']).first()
-    color_id = request_color_id()
-    size_id = normalize_cart_size_id(id, request.args.get("size_id"))
-    clear_wallet_cart_sizes(id, user.id)
+    cart_item_id = request_cart_item_id()
 
-    item = db.session.execute(text("""
-        SELECT quantity FROM cart
-        WHERE user_id=:uid AND product_id=:pid
-        AND ((color_id IS NULL AND :cid IS NULL) OR color_id=:cid)
-        AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-        LIMIT 1
-    """), {"uid": user.id, "pid": id, "cid": color_id, "sid": size_id}).fetchone()
+    if cart_item_id:
+        cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
+    else:
+        color_id = request_color_id()
+        size_id = normalize_cart_size_id(id, request.args.get("size_id"))
+        clear_wallet_cart_sizes(id, user.id)
+        cart_item = Cart.query.filter(
+            Cart.user_id == user.id,
+            Cart.product_id == id,
+            Cart.color_id.is_(None) if color_id is None else Cart.color_id == color_id,
+            Cart.size_id.is_(None) if size_id is None else Cart.size_id == size_id
+        ).order_by(Cart.id.asc()).first()
 
-    if item:
-        if item.quantity > 1:
-            db.session.execute(text("""
-                UPDATE cart SET quantity = quantity - 1
-                WHERE user_id=:uid AND product_id=:pid
-                AND ((color_id IS NULL AND :cid IS NULL) OR color_id=:cid)
-                AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-            """), {"uid": user.id, "pid": id, "cid": color_id, "sid": size_id})
-        else:
-            db.session.execute(text("""
-                DELETE FROM cart WHERE user_id=:uid AND product_id=:pid
-                AND ((color_id IS NULL AND :cid IS NULL) OR color_id=:cid)
-                AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-            """), {"uid": user.id, "pid": id, "cid": color_id, "sid": size_id})
+    if not cart_item:
+        return cart_json_error("Cart item not found", 404, product_id=id, cart_item_id=cart_item_id, user_id=user.id)
+
+    if int(cart_item.quantity or 0) > 1:
+        cart_item.quantity = int(cart_item.quantity or 0) - 1
+    else:
+        db.session.delete(cart_item)
 
     db.session.commit()
-    return jsonify({"success": True, "message": "Updated"})
+    payload = cart_totals_payload(user.id)
+    return jsonify({"success": True, **payload, "message": "Cart updated"})
 
 @app.route('/add_to_cart/<int:id>', methods=['GET', 'POST'])
 def add_to_cart(id):
     if 'email' not in session:
-        return jsonify({"error": "Login required"}), 401
+        return cart_json_error("Please login to continue", 401, product_id=id)
     product = Product.query.get(id)
     if not product or product.is_archived:
-        return jsonify({"error": "Product is not available"}), 404
+        return cart_json_error("This product is no longer available.", 404, product_id=id)
     user     = User.query.filter_by(email=session['email']).first()
     data     = request.get_json(silent=True) or {}
     color_id = request_color_id(data)
@@ -4943,9 +5270,9 @@ def add_to_cart(id):
     clear_wallet_cart_sizes(id, user.id)
 
     if product_requires_size(id) and not size_id:
-        return jsonify({"error": "size_required", "message": "Please select a size before adding to cart."}), 400
+        return jsonify({"success": False, "error": "size_required", "message": "Please select a size before adding to cart."}), 400
     if size_id and not is_valid_product_size(id, size_id):
-        return jsonify({"error": "invalid_size", "message": "Invalid size selected"}), 400
+        return cart_json_error("Invalid size selected", 400, product_id=id, size_id=size_id)
 
     add_cart_item(user, id, color_id, size_id, 1)
 
@@ -5175,21 +5502,21 @@ def toggle_wishlist(product_id):
 def toggle_cart(product_id):
 
     if 'email' not in session:
-        return jsonify({"error": "login required"}), 401
+        return cart_json_error("Please login to continue", 401, product_id=product_id)
     
     data = request.get_json() or {}
     size_id = normalize_cart_size_id(product_id, data.get("size_id"))
     color_id = request_color_id(data)
     product = Product.query.get(product_id)
     if not product or product.is_archived:
-        return jsonify({"error": "Product is not available"}), 404
+        return cart_json_error("This product is no longer available.", 404, product_id=product_id)
     user = get_user()
     clear_wallet_cart_sizes(product_id, user.id)
 
     if product_requires_size(product_id) and not size_id:
-        return jsonify({"error": "size_required"}), 400
+        return jsonify({"success": False, "error": "size_required", "message": "Please select a size before adding to cart."}), 400
     if size_id and not is_valid_product_size(product_id, size_id):
-        return jsonify({"error": "invalid_size", "message": "Invalid size selected"}), 400
+        return cart_json_error("Invalid size selected", 400, product_id=product_id, size_id=size_id)
 
     existing = db.session.execute(text("""
         SELECT 1 FROM cart 
@@ -5289,7 +5616,7 @@ def api_counts():
 @app.route('/update_quantity/<int:product_id>/<string:action>')
 def update_quantity(product_id, action):
     if 'email' not in session:
-        return jsonify({"success": False, "status": "error", "message": "Login required"}), 401
+        return cart_json_error("Please login to continue", 401, product_id=product_id, action=action)
 
     user = User.query.filter_by(email=session['email']).first()
     cart_item_id = request_cart_item_id()
@@ -5309,16 +5636,20 @@ def update_quantity(product_id, action):
         ).order_by(Cart.id.asc()).first()
 
     if not cart_item:
-        return jsonify({"success": False, "status": "not_found", "message": "Cart item not found"}), 404
+        return cart_json_error("Cart item not found", 404, product_id=product_id, cart_item_id=cart_item_id, user_id=user.id)
 
-    qty = int(cart_item.quantity) if cart_item else 0
+    product = cart_item.product or Product.query.get(cart_item.product_id)
+    if not product or product.is_archived:
+        return cart_json_error("This product is no longer available.", 404, product_id=cart_item.product_id, cart_item_id=cart_item.id)
+
+    qty = normalize_cart_quantity(cart_item.quantity)
 
     if action == "plus":
-        qty += 1
+        qty = min(qty + 1, MAX_CART_QUANTITY)
     elif action == "minus":
         qty -= 1
     else:
-        return jsonify({"success": False, "status": "error", "message": "Invalid quantity action"}), 400
+        return cart_json_error("Invalid quantity action", 400, product_id=product_id, action=action)
 
     if qty <= 0:
         db.session.delete(cart_item)
@@ -5398,9 +5729,13 @@ def api_orders():
         "courier_partner": o.courier_partner,
         "tracking_url": o.tracking_url,
         "items": [{
-            "product_name": item.product.name if item.product else f"Product #{item.product_id}",
+            "product_name": item.product_name or (item.product.name if item.product else f"Product #{item.product_id}"),
             "product_image": order_item_image_url(item),
-            "size": item.size.size_label if item.size else None,
+            "size": (
+                item.size.size_label
+                if item.size else
+                ("Universal" if item.product and item.product.product_type == "belt" and product_size_type(item.product) == "universal" else None)
+            ),
             "color": item.color.name if item.color else None,
             "quantity": item.quantity,
             "price": item.price
@@ -5428,22 +5763,45 @@ def add_address():
     if alternate_phone and not re.fullmatch(r"[6-9]\d{9}", alternate_phone):
         return jsonify({"message": "Please enter a valid 10 digit phone number"}), 400
 
+    full_name = (data.get('full_name') or '').strip()
+    address_line = (data.get('address_line') or '').strip()
+    city = (data.get('city') or '').strip()
+    state = (data.get('state') or '').strip()
+    pincode = (data.get('pincode') or '').strip()
+    missing = [
+        field for field, value in {
+            "full_name": full_name,
+            "address_line": address_line,
+            "city": city,
+            "state": state,
+            "pincode": pincode,
+        }.items()
+        if not value
+    ]
+    if missing:
+        return jsonify({
+            "success": False,
+            "message": f"Please fill required address fields: {', '.join(missing)}"
+        }), 400
+    if not re.fullmatch(r"\d{6}", pincode):
+        return jsonify({"success": False, "message": "Please enter a valid 6 digit pincode"}), 400
+
     delivery_phone = alternate_phone or user_phone
 
     address = Address(
         user_id=user.id,   # ✅ FIXED
-        full_name=(data.get('full_name') or '').strip(),
+        full_name=full_name,
         phone=delivery_phone,
-        address_line=(data.get('address_line') or '').strip(),
-        city=(data.get('city') or '').strip(),
-        state=(data.get('state') or '').strip(),
-        pincode=(data.get('pincode') or '').strip()
+        address_line=address_line,
+        city=city,
+        state=state,
+        pincode=pincode
     )
 
     db.session.add(address)
     db.session.commit()
 
-    return jsonify({"message": "Address saved", "phone": delivery_phone})
+    return jsonify({"success": True, "message": "Address saved", "phone": delivery_phone})
 
 
 @app.route('/add-address', methods=['POST'])
@@ -5560,10 +5918,11 @@ def checkout_review():
                 "cart_item_id": item.cart_id,
                 "product_id": product.id,
                 "product_name": product.name,
+                "image_url": product_variant_image_url(product.id, item.color_id),
                 "color_id": item.color_id,
                 "color_name": color.name if color else None,
                 "size_id": item.size_id,
-                "size_label": "Universal Size" if product_size_type(product) == "universal" else item.size_label,
+                "size_label": "Universal" if product_size_type(product) == "universal" else item.size_label,
                 "quantity": item.quantity,
                 "price": product.price,
                 "item_total": item_total
@@ -5712,9 +6071,16 @@ def create_razorpay_order():
     if not selected_address.phone:
         selected_address.phone = user.phone
         db.session.commit()
+    address_valid, address_error = validate_delivery_address(selected_address)
+    if not address_valid:
+        return json_error(address_error, 400)
+
     cart_lines, cart_total = cart_snapshot_for_user(user.id)
     if not cart_lines:
         return json_error("Cart is empty", 400)
+    cart_valid, cart_error = validate_cart_lines_for_checkout(cart_lines)
+    if not cart_valid:
+        return json_error(cart_error, 400)
 
     requested_coupon_code = (data.get("coupon_code") or current_coupon_code()).strip().upper()
     if requested_coupon_code:
@@ -5741,7 +6107,12 @@ def create_razorpay_order():
 
     existing_order = reusable_pending_order(user.id, selected_address.id, final_total, coupon_result["coupon_code"])
 
-    if existing_order and existing_order.razorpay_order_id and existing_order.razorpay_order_id.startswith("order_"):
+    if (
+        existing_order
+        and existing_order.razorpay_order_id
+        and existing_order.razorpay_order_id.startswith("order_")
+        and order_matches_cart_lines(existing_order, cart_lines)
+    ):
       return jsonify({
         "success": True,
         "key": app.config.get("RAZORPAY_KEY_ID"),
@@ -5761,8 +6132,14 @@ def create_razorpay_order():
             "name": selected_address.full_name or user.username,
             "email": user.email,
             "phone": selected_address.phone or user.phone
-        }
+            }
     })
+
+    if existing_order and not order_matches_cart_lines(existing_order, cart_lines):
+        existing_order.payment_status = "Failed"
+        existing_order.order_status = "Payment Failed"
+        existing_order.status = "Payment Failed"
+        db.session.commit()
 
     order, error = create_pending_order_from_cart(
         user,
@@ -6025,6 +6402,7 @@ def checkout():
         db.session.add(OrderItem(
             order_id=order.id,
             product_id=pid,
+            product_name=product.name,
             color_id=item.color_id,
             quantity=qty,
             price=product.price
@@ -6335,19 +6713,22 @@ def api_addresses():
             "pincode": a.pincode
         } for a in addresses])
 
-    data = request.get_json()
+    data = request.get_json() or {}
     address = Address(
         user_id=user.id,
-        full_name=data['full_name'],
-        phone=data['phone'],
-        address_line=data['address_line'],
-        city=data['city'],
-        state=data['state'],
-        pincode=data['pincode']
+        full_name=(data.get('full_name') or '').strip(),
+        phone=(data.get('phone') or '').strip(),
+        address_line=(data.get('address_line') or '').strip(),
+        city=(data.get('city') or '').strip(),
+        state=(data.get('state') or '').strip(),
+        pincode=(data.get('pincode') or '').strip()
     )
+    address_valid, address_error = validate_delivery_address(address)
+    if not address_valid:
+        return jsonify({"success": False, "message": address_error}), 400
     db.session.add(address)
     db.session.commit()
-    return jsonify({"message": "Address added"})
+    return jsonify({"success": True, "message": "Address added"})
 
 @app.route('/api/addresses/<int:id>', methods=['GET', 'PUT', 'DELETE'])
 def api_address(id):
@@ -6371,15 +6752,18 @@ def api_address(id):
         })
 
     if request.method == 'PUT':
-        data = request.get_json()
-        address.full_name = data['full_name']
-        address.phone = data['phone']
-        address.address_line = data['address_line']
-        address.city = data['city']
-        address.state = data['state']
-        address.pincode = data['pincode']
+        data = request.get_json() or {}
+        address.full_name = (data.get('full_name') or '').strip()
+        address.phone = (data.get('phone') or '').strip()
+        address.address_line = (data.get('address_line') or '').strip()
+        address.city = (data.get('city') or '').strip()
+        address.state = (data.get('state') or '').strip()
+        address.pincode = (data.get('pincode') or '').strip()
+        address_valid, address_error = validate_delivery_address(address)
+        if not address_valid:
+            return jsonify({"success": False, "message": address_error}), 400
         db.session.commit()
-        return jsonify({"message": "Address updated"})
+        return jsonify({"success": True, "message": "Address updated"})
 
     if request.method == 'DELETE':
         db.session.delete(address)

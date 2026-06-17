@@ -2745,21 +2745,30 @@ function toggleCart(productId, btn) {
 
     btn.disabled = true;
 
+    const payload = {
+        size_id: selectedSize,
+        color_id: selectedColorId
+    };
+    console.log("Product cart request payload:", { product_id: productId, ...payload });
+
     fetch(`/cart/toggle/${productId}`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            size_id: selectedSize,
-            color_id: selectedColorId
-        })
+        body: JSON.stringify(payload)
     })
-    .then(res => res.json().then(data => ({ ok: res.ok, status: res.status, data })))
+    .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, status: res.status, data })))
     .then(({ ok, status, data }) => {
+        console.log("Product cart response:", {
+            requestPayload: { product_id: productId, ...payload },
+            status,
+            responseJson: data,
+            errorMessage: data?.message || data?.error || ""
+        });
 
         if (!ok || data.error) {
-            console.error("Cart toggle error:", data);
+            console.error("Cart toggle error:", data?.message || data?.error, data);
             if (status === 401 || data.error === "login required" || data.error === "Login required") {
                 openPopup();
             } else {
@@ -2782,7 +2791,7 @@ function toggleCart(productId, btn) {
     })
     .catch(err => {
         console.error("Cart toggle request failed:", err);
-        alert("Could not update cart. Please try again.");
+        alert(err.message || "Could not update cart");
     })
     .finally(() => btn.disabled = false);
 }
@@ -2880,22 +2889,31 @@ function handleProductBuyNow(productId) {
 
     setBuyNowLoading(true);
 
+    const payload = {
+        size_id: selectedSize,
+        color_id: selectedColorId
+    };
+    console.log("Buy now cart request payload:", { product_id: productId, ...payload });
+
     fetch(`/add_to_cart/${productId}`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            size_id: selectedSize,
-            color_id: selectedColorId
-        })
+        body: JSON.stringify(payload)
     })
-    .then(res => res.json().then(data => ({ ok: res.ok, status: res.status, data })))
+    .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, status: res.status, data })))
     .then(({ ok, status, data }) => {
+        console.log("Buy now cart response:", {
+            requestPayload: { product_id: productId, ...payload },
+            status,
+            responseJson: data,
+            errorMessage: data?.message || data?.error || ""
+        });
         if (!ok || data.error) {
             if (status === 401 || data.error === "Login required") openPopup();
             else {
-                console.error("Buy now cart error:", data);
+                console.error("Buy now cart error:", data?.message || data?.error, data);
                 alert(data.message || data.error || "Could not add item to cart");
             }
             return;
@@ -2909,7 +2927,10 @@ function handleProductBuyNow(productId) {
 
         openBuyNowReview();
     })
-    .catch(() => alert("Could not add item to cart"))
+    .catch(err => {
+        console.error("Buy now cart request failed:", err);
+        alert(err.message || "Could not add item to cart");
+    })
     .finally(() => setBuyNowLoading(false));
 }
 

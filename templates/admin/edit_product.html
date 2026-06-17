@@ -26,6 +26,11 @@
             {% endfor %}
         {% endif %}
         {% endwith %}
+        {% if errors.get('media') %}
+        <div class="form-alert error" id="mediaUploadError">{{ errors.get('media') }}</div>
+        {% else %}
+        <div class="form-alert error" id="mediaUploadError" style="display:none;"></div>
+        {% endif %}
         <form method="POST" enctype="multipart/form-data" id="editProductForm">
             <input type="hidden" name="product_type" value="{{ product_type or product.product_type or 'belt' }}">
 
@@ -316,9 +321,9 @@
                name="color_images_{{ color.id }}"
                id="upload_{{ color.id }}"
                multiple
-               accept="image/*"
+               accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                {% if color.id not in selected_color_ids %}disabled{% endif %}
-               onchange="previewImages(event, {{ color.id }})">
+               onchange="if(validateMediaInput(this)){previewImages(event, {{ color.id }})}">
 
         <div class="preview-container" id="preview_{{ color.id }}">
             {% for img in product.images %}
@@ -342,9 +347,9 @@
                name="color_videos_{{ color.id }}"
                id="video_upload_{{ color.id }}"
                multiple
-               accept="video/*"
+               accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime"
                {% if color.id not in selected_color_ids %}disabled{% endif %}
-               onchange="previewVideos(event, {{ color.id }})">
+               onchange="if(validateMediaInput(this)){previewVideos(event, {{ color.id }})}">
 
         <div class="preview-container" id="video_preview_{{ color.id }}">
             {% for vid in product.videos %}
@@ -379,7 +384,7 @@
                         type="file"
                         id="imageInput"
                         name="images"
-                        accept="image/*"
+                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                         multiple
                         hidden
                     >
@@ -389,7 +394,7 @@
 
                 <div class="form-group">
                     <label>Add New Videos</label>
-                    <input type="file" name="videos" multiple class="premium-file" onchange="previewNewVideos(event)">
+                    <input type="file" name="videos" multiple class="premium-file" accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime" onchange="if(validateMediaInput(this)){previewNewVideos(event)}">
 
 <div id="newVideoPreview" class="preview-container"></div>
                 </div>
@@ -1014,6 +1019,89 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 <script>
+const MEDIA_LIMITS = {
+    image: {
+        maxCount: 5,
+        maxBytes: 3 * 1024 * 1024,
+        extensions: ["jpg", "jpeg", "png", "webp"],
+        countMessage: "You can upload maximum 5 images at a time.",
+        typeMessage: "Only JPG, JPEG, PNG and WEBP image files are allowed.",
+        sizeMessage: "Each image must be 3MB or smaller."
+    },
+    video: {
+        maxCount: 2,
+        maxBytes: 20 * 1024 * 1024,
+        extensions: ["mp4", "webm", "mov"],
+        countMessage: "You can upload maximum 2 videos at a time.",
+        typeMessage: "Only MP4, WEBM and MOV video files are allowed.",
+        sizeMessage: "Each video must be 20MB or smaller."
+    }
+};
+
+function mediaKind(input) {
+    const name = input?.name || "";
+    return name === "videos" || name.startsWith("color_videos_") ? "video" : "image";
+}
+
+function showMediaError(message) {
+    const errorBox = document.getElementById("mediaUploadError");
+    if (!errorBox) return;
+    errorBox.textContent = message || "";
+    errorBox.style.display = message ? "" : "none";
+}
+
+function clearMediaPreview(input) {
+    const name = input?.name || "";
+    if (name === "images") document.getElementById("imagePreviewContainer")?.replaceChildren();
+    if (name === "videos") document.getElementById("newVideoPreview")?.replaceChildren();
+    const colorMatch = name.match(/^color_(images|videos)_(\d+)$/);
+    if (colorMatch) {
+        const prefix = colorMatch[1] === "images" ? "preview_" : "video_preview_";
+        document.getElementById(prefix + colorMatch[2])?.replaceChildren();
+    }
+}
+
+function totalSelectedFiles(kind) {
+    const selector = kind === "image"
+        ? 'input[type="file"][name="images"], input[type="file"][name^="color_images_"]'
+        : 'input[type="file"][name="videos"], input[type="file"][name^="color_videos_"]';
+    return Array.from(document.querySelectorAll(selector)).reduce((total, input) => {
+        if (input.disabled) return total;
+        return total + Array.from(input.files || []).filter(file => file.name).length;
+    }, 0);
+}
+
+function validateMediaInput(input) {
+    if (!input) return true;
+    const kind = mediaKind(input);
+    const rules = MEDIA_LIMITS[kind];
+    const files = Array.from(input.files || []);
+    let message = "";
+
+    if (files.some(file => !rules.extensions.includes((file.name.split(".").pop() || "").toLowerCase()))) {
+        message = rules.typeMessage;
+    } else if (files.some(file => file.size > rules.maxBytes)) {
+        message = rules.sizeMessage;
+    } else if (totalSelectedFiles(kind) > rules.maxCount) {
+        message = rules.countMessage;
+    }
+
+    if (message) {
+        input.value = "";
+        clearMediaPreview(input);
+        showMediaError(message);
+        return false;
+    }
+
+    showMediaError("");
+    return true;
+}
+
+function validateAllMediaInputs() {
+    const inputs = document.querySelectorAll('input[type="file"][name="images"], input[type="file"][name="videos"], input[type="file"][name^="color_images_"], input[type="file"][name^="color_videos_"]');
+    return Array.from(inputs).every(input => validateMediaInput(input));
+}
+
 let cropper;
 let currentFiles = [];
 let currentIndex = 0;
@@ -1162,6 +1250,7 @@ const previewContainer = document.getElementById("imagePreviewContainer");
 
 if (imageInput && previewContainer) {
     imageInput.addEventListener("change", function() {
+        if (!validateMediaInput(this)) return;
         previewContainer.innerHTML = "";
 
         Array.from(this.files || []).forEach((file) => {
@@ -1226,6 +1315,24 @@ function previewVideos(event, colorId) {
     });
 }
 
+function previewNewVideos(event) {
+    const container = document.getElementById("newVideoPreview");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    Array.from(event.target.files).forEach(file => {
+        const url = URL.createObjectURL(file);
+        const wrapper = document.createElement("div");
+        wrapper.className = "video-thumb";
+        const video = document.createElement("video");
+        video.src = url;
+        video.controls = true;
+        wrapper.appendChild(video);
+        container.appendChild(wrapper);
+    });
+}
+
 const editProductForm = document.getElementById("editProductForm");
 function toggleSizeTypeFields() {
     const sizeType = document.getElementById("sizeTypeSelect");
@@ -1242,8 +1349,15 @@ function toggleSizeTypeFields() {
 toggleSizeTypeFields();
 
 if (editProductForm) {
-    editProductForm.addEventListener("submit", function() {
-        if (editProductForm.dataset.submitting === "true") return false;
+    editProductForm.addEventListener("submit", function(event) {
+        if (!validateAllMediaInputs()) {
+            event.preventDefault();
+            return false;
+        }
+        if (editProductForm.dataset.submitting === "true") {
+            event.preventDefault();
+            return false;
+        }
 
         editProductForm.dataset.submitting = "true";
         const submitButton = editProductForm.querySelector('button[type="submit"]');

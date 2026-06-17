@@ -309,6 +309,7 @@ class OrderItem(db.Model):
 
     quantity = db.Column(db.Integer)
     price = db.Column(db.Float)
+    product_name = db.Column(db.String(255), nullable=True)
     size_id = db.Column(db.Integer, db.ForeignKey('product_sizes.id'), nullable=True)
     color_id = db.Column(db.Integer, db.ForeignKey('colors.id'), nullable=True)
 

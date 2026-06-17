@@ -28,7 +28,7 @@
                         <div class="order-item">
                             <img src="{{ order_item_image_url(item) }}" alt="">
                             <div>
-                                <p>{{ item.product.name if item.product else 'Product #' ~ item.product_id }}</p>
+                                <p>{{ item.product_name or (item.product.name if item.product else 'Product #' ~ item.product_id) }}</p>
                                 <small>
                                     Qty: {{ item.quantity }}
                                     {% if item.size %} | Size: {{ item.size.size_label }}{% endif %}

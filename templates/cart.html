@@ -43,6 +43,11 @@
                         Size: {{ p.size_label }}
                     </p>
                     {% endif %}
+                    {% if p.unavailable %}
+                    <p class="cart-variant cart-unavailable-row">
+                        {{ p.message or 'This product is no longer available.' }}
+                    </p>
+                    {% endif %}
                  <p class="price" id="price-{{ variant_key }}">₹{{ p.price }}</p>
                  </div>
 
@@ -52,14 +57,16 @@
 </p>
 
                     <div class="qty-box cart-qty-control">
-                        <button class="qty-btn minus" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">−</button>
+                        <button class="qty-btn minus" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}" {% if p.unavailable %}disabled{% endif %}>−</button>
                         <span class="qty-number" id="qty-{{ variant_key }}">{{ p.quantity }}</span>
-                        <button class="qty-btn plus" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">+</button>
+                        <button class="qty-btn plus" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}" {% if p.unavailable %}disabled{% endif %}>+</button>
                     </div>
 
    <div class="actions cart-action-buttons">
     <button class="removeBtn remove-btn cart-remove-btn cart-item-remove-btn" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Remove</button>
+    {% if not p.unavailable %}
     <button class="wishBtn" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Move to Wishlist</button>
+    {% endif %}
 </div>
                 </div>
             </div>
@@ -179,8 +186,29 @@
     </div>
 </div>
 
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
+let razorpayCheckoutScriptPromise = null;
+
+function loadRazorpayCheckoutScript() {
+    if (typeof Razorpay !== "undefined") {
+        return Promise.resolve();
+    }
+    if (razorpayCheckoutScriptPromise) {
+        return razorpayCheckoutScriptPromise;
+    }
+
+    razorpayCheckoutScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Payment service could not load"));
+        document.head.appendChild(script);
+    });
+
+    return razorpayCheckoutScriptPromise;
+}
+
 async function startRazorpayPayment(payment){
     const confirmBtn = document.getElementById("confirmOrderBtn");
 
@@ -275,6 +303,18 @@ async function startRazorpayPayment(payment){
             }
 
             alert(data.message || "Payment could not be started");
+            return;
+        }
+
+        try {
+            await loadRazorpayCheckoutScript();
+        } catch (scriptError) {
+            console.error("Razorpay checkout script load error:", scriptError);
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerText = "Confirm Order";
+            }
+            alert("Payment service could not load. Please refresh and try again.");
             return;
         }
 
@@ -680,9 +720,34 @@ function cartMutationUrl(path, params){
     return `${path}?${query.toString()}`;
 }
 
+function cartMutationFetch(path, params, options = {}){
+    const url = cartMutationUrl(path, params);
+    const payload = {
+        url,
+        method: options.method || "GET",
+        cart_item_id: params.cartId || null,
+        product_id: params.id || null,
+        color_id: params.color || null,
+        size_id: params.size || null
+    };
+    console.log("Cart request payload:", payload);
+
+    return fetch(url, options)
+        .then(res => res.json().catch(() => ({})).then(data => {
+            const message = data?.message || data?.error || "";
+            console.log("Cart response:", {
+                requestPayload: payload,
+                status: res.status,
+                responseJson: data,
+                errorMessage: message
+            });
+            return { ok: res.ok, status: res.status, data };
+        }));
+}
+
 function handleCartError(data, fallback){
     const message = data?.message || data?.error || fallback || "Cart action failed";
-    console.error("Cart error:", data || message);
+    console.error("Cart error message:", message, "response JSON:", data);
     showLiveToast(message, "error");
 }
 
@@ -696,8 +761,7 @@ document.querySelectorAll(".removeBtn").forEach(btn => {
         const params = cartActionParams(card, this);
         const restore = typeof setButtonLoading === "function" ? setButtonLoading(this, "Removing...") : (()=>{});
 
-        fetch(cartMutationUrl(`/remove_cart/${params.id}`, params))
-        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        cartMutationFetch(`/remove_cart/${params.id}`, params)
         .then(({ ok, data }) => {
 
             if (ok && data.success) {
@@ -710,7 +774,7 @@ document.querySelectorAll(".removeBtn").forEach(btn => {
         })
         .catch(err => {
             console.error("Cart remove error:", err);
-            showLiveToast("Something went wrong. Please try again.", "error");
+            showLiveToast(err.message || "Could not remove item", "error");
         })
         .finally(restore);
     });
@@ -729,15 +793,19 @@ document.querySelectorAll(".wishBtn").forEach(btn=>{
         const params = cartActionParams(card, btn);
         const restore = typeof setButtonLoading === "function" ? setButtonLoading(btn, "Moving...") : (()=>{});
 
+        const wishlistPayload = { product_id: params.id, color_id: params.color || null, cart_item_id: params.cartId || null };
+        console.log("Move to wishlist request payload:", wishlistPayload);
         fetch(`/add_to_wishlist/${params.id}?color_id=${params.color}`)
-        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(res => res.json().catch(() => ({})).then(data => {
+            console.log("Move to wishlist response:", { requestPayload: wishlistPayload, status: res.status, responseJson: data, errorMessage: data?.message || data?.error || "" });
+            return { ok: res.ok, data };
+        }))
         .then(({ ok, data })=>{
             if(!ok || !data.success){
                 throw new Error(data.message || data.error || "Could not move item to wishlist");
             }
-            return fetch(cartMutationUrl(`/remove_cart/${params.id}`, params));
+            return cartMutationFetch(`/remove_cart/${params.id}`, params);
         })
-        .then(res=>res.json().then(data => ({ ok: res.ok, data })))
         .then(({ ok, data })=>{
             if(ok && data.success){
                 smoothRemoveCard(card).then(() => updateCartSummary(data));
@@ -748,7 +816,7 @@ document.querySelectorAll(".wishBtn").forEach(btn=>{
         })
         .catch(err => {
             console.error("Move to wishlist error:", err);
-            showLiveToast(err.message || "Something went wrong. Please try again.", "error");
+            showLiveToast(err.message || "Could not move item to wishlist", "error");
         })
         .finally(restore);
     });
@@ -803,7 +871,10 @@ function loadCheckoutReview(){
             ].filter(Boolean).join(" | ");
             reviewHTML += `
             <div class="review-item-row">
-                <span>${item.product_name} × ${item.quantity}<small>${meta ? `<br>${meta}` : ""}</small></span>
+                <span class="review-item-info">
+                    <img src="${item.image_url || '/static/images/default.png'}" alt="">
+                    <span>${item.product_name} × ${item.quantity}<small>${meta ? `<br>${meta}` : ""}</small></span>
+                </span>
                 <span>₹${item.item_total}</span>
             </div>`;
         });
@@ -1142,8 +1213,7 @@ document.querySelectorAll(".plus").forEach(btn=>{
         const params = cartActionParams(card, btn);
         const restore = typeof setButtonLoading === "function" ? setButtonLoading(btn, "...") : (()=>{});
 
-        fetch(cartMutationUrl(`/update_quantity/${params.id}/plus`, params))
-        .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+        cartMutationFetch(`/update_quantity/${params.id}/plus`, params)
         .then(({ ok, data })=>{
             if(!ok || (!data.success && data.status !== "ok")){
                 handleCartError(data, "Could not update cart");
@@ -1157,7 +1227,7 @@ document.querySelectorAll(".plus").forEach(btn=>{
         })
         .catch(err => {
             console.error("Cart quantity plus error:", err);
-            showLiveToast("Something went wrong. Please try again.", "error");
+            showLiveToast(err.message || "Could not update cart", "error");
         })
         .finally(restore);
     });
@@ -1171,8 +1241,7 @@ document.querySelectorAll(".minus").forEach(btn=>{
         const params = cartActionParams(card, btn);
         const restore = typeof setButtonLoading === "function" ? setButtonLoading(btn, "...") : (()=>{});
 
-        fetch(cartMutationUrl(`/update_quantity/${params.id}/minus`, params))
-        .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+        cartMutationFetch(`/update_quantity/${params.id}/minus`, params)
         .then(({ ok, data })=>{
             if(!ok || (!data.success && data.status !== "ok")){
                 handleCartError(data, "Could not update cart");
@@ -1192,17 +1261,16 @@ document.querySelectorAll(".minus").forEach(btn=>{
         })
         .catch(err => {
             console.error("Cart quantity minus error:", err);
-            showLiveToast("Something went wrong. Please try again.", "error");
+            showLiveToast(err.message || "Could not update cart", "error");
         })
         .finally(restore);
     });
 });
 
 
-function removeItem(id, color = "", size = ""){
-    const params = { id, color, size, cartId: "" };
-    fetch(cartMutationUrl(`/remove_cart/${id}`, params))
-    .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+function removeItem(id, color = "", size = "", cartId = ""){
+    const params = { id, color, size, cartId };
+    cartMutationFetch(`/remove_cart/${id}`, params)
     .then(({ ok, data })=>{
         if(ok && data.success){
             updateCartSummary(data);
@@ -1213,21 +1281,25 @@ function removeItem(id, color = "", size = ""){
     })
     .catch(err => {
         console.error("Cart remove error:", err);
-        showLiveToast("Something went wrong. Please try again.", "error");
+        showLiveToast(err.message || "Could not remove item", "error");
     });
 }
 
-function moveToWishlist(id, color = "", size = ""){
-    const params = { id, color, size, cartId: "" };
+function moveToWishlist(id, color = "", size = "", cartId = ""){
+    const params = { id, color, size, cartId };
+    const wishlistPayload = { product_id: id, color_id: color || null, cart_item_id: cartId || null };
+    console.log("Move to wishlist request payload:", wishlistPayload);
     fetch(`/add_to_wishlist/${id}?color_id=${color}`)
-    .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+    .then(res => res.json().catch(() => ({})).then(data => {
+        console.log("Move to wishlist response:", { requestPayload: wishlistPayload, status: res.status, responseJson: data, errorMessage: data?.message || data?.error || "" });
+        return { ok: res.ok, data };
+    }))
     .then(({ ok, data })=>{
         if(!ok || !data.success){
             throw new Error(data.message || data.error || "Could not move item to wishlist");
         }
-        return fetch(cartMutationUrl(`/remove_cart/${id}`, params));
+        return cartMutationFetch(`/remove_cart/${id}`, params);
     })
-    .then(res=>res.json().then(data => ({ ok: res.ok, data })))
     .then(({ ok, data })=>{
         if(ok && data.success){
             updateCartSummary(data);
@@ -1299,6 +1371,26 @@ function moveToWishlist(id, color = "", size = ""){
 
 .cart-size-row {
     color: #58706c;
+}
+
+.cart-unavailable-row {
+    color: #b42318;
+    font-weight: 600;
+}
+
+.review-item-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.review-item-info img {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex: 0 0 auto;
 }
 
 .cart-size-dot {

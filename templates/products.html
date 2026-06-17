@@ -790,13 +790,17 @@ function legacyImmediateToggleCart(productId, btn, colorId = null) {
     // REMOVE FLOW
     if (isActive) {
         const sizeId = btn.dataset.size || "";
-        fetch(`/remove_cart/${productId}?color_id=${colorId || ""}&size_id=${sizeId}`)
-            .then(res => res.json())
-            .then(data => {
+        productCardCartFetch(`/remove_cart/${productId}?color_id=${colorId || ""}&size_id=${sizeId}`)
+            .then(({ ok, data }) => {
+                if (!ok || !data.success) {
+                    handleProductCardCartError(data, "Could not remove item");
+                    return;
+                }
                 btn.classList.remove("active");
                 btn.innerText = "Add to Cart";
                 updateCartCount();
-            });
+            })
+            .catch(err => handleProductCardCartError({ message: err.message }, "Could not remove item"));
         return;
     }
 
@@ -830,15 +834,10 @@ function legacyImmediateOpenSizeModal(productId, colorId = null) {
                         .forEach(b => b.classList.remove("active"));
                     btn.classList.add("active");
 
-                    fetch(`/cart/toggle/${productId}`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ size_id: selectedSizeId, color_id: colorId })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.error === "size_required") {
-                            alert("Size required");
+                    productCardCartFetch(`/cart/toggle/${productId}`, { size_id: selectedSizeId, color_id: colorId })
+                    .then(({ ok, data }) => {
+                        if (!ok || data.error) {
+                            handleProductCardCartError(data, "Size required");
                             return;
                         }
 
@@ -859,7 +858,8 @@ function legacyImmediateOpenSizeModal(productId, colorId = null) {
                         selectedProductId = null;
                         selectedSizeId = null;
                         selectedSizeLabel = null;
-                    });
+                    })
+                    .catch(err => handleProductCardCartError({ message: err.message }, "Could not update cart"));
                 };
 
                 list.appendChild(btn);
@@ -896,14 +896,18 @@ function toggleCart(productId, btn, colorId = null) {
         }
 
         const sizeId = btn.dataset.size || "";
-        fetch(`/remove_cart/${productId}?color_id=${colorId || ""}&size_id=${sizeId}`)
-            .then(res => res.json())
-            .then(() => {
+        productCardCartFetch(`/remove_cart/${productId}?color_id=${colorId || ""}&size_id=${sizeId}`)
+            .then(({ ok, data }) => {
+                if (!ok || !data.success) {
+                    handleProductCardCartError(data, "Could not remove item");
+                    return;
+                }
                 btn.classList.remove("active");
                 btn.innerText = "Add to Cart";
                 btn.dataset.size = "";
                 updateCartCount();
-            });
+            })
+            .catch(err => handleProductCardCartError({ message: err.message }, "Could not remove item"));
         return;
     }
 
@@ -979,15 +983,10 @@ function confirmProductCardAddToCart() {
         return;
     }
 
-    fetch(`/cart/toggle/${productId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ size_id: selectedSizeId, color_id: colorId })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.error === "size_required") {
-            alert("Please select size first");
+    productCardCartFetch(`/cart/toggle/${productId}`, { size_id: selectedSizeId, color_id: colorId })
+    .then(({ ok, data }) => {
+        if (!ok || data.error) {
+            handleProductCardCartError(data, "Please select size first");
             return;
         }
 
@@ -997,7 +996,8 @@ function confirmProductCardAddToCart() {
         updateProductCardCartButton(productId, colorId, selectedSizeId);
         updateCartCount();
         closeSizeModal();
-    });
+    })
+    .catch(err => handleProductCardCartError({ message: err.message }, "Could not update cart"));
 }
 
 function updateProductCardCartButton(productId, colorId, sizeId) {
@@ -1075,10 +1075,40 @@ function checkCart(productId, colorId = null) {
 
 function updateCartCount() {
     fetch("/get_counts")
-        .then(res => res.json())
-        .then(data => {
+        .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, status: res.status, data })))
+        .then(({ ok, status, data }) => {
+            console.log("Product listing cart count response:", { status, responseJson: data, errorMessage: data?.message || data?.error || "" });
+            if (!ok) return;
             document.getElementById("cartCount").innerText = data.cart;
         });
+}
+
+function productCardCartFetch(url, payload = null) {
+    const options = payload
+        ? {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        }
+        : {};
+    console.log("Product listing cart request payload:", { url, payload });
+    return fetch(url, options)
+        .then(res => res.json().catch(() => ({})).then(data => {
+            console.log("Product listing cart response:", {
+                requestPayload: { url, payload },
+                status: res.status,
+                responseJson: data,
+                errorMessage: data?.message || data?.error || ""
+            });
+            return { ok: res.ok, status: res.status, data };
+        }));
+}
+
+function handleProductCardCartError(data, fallback) {
+    const message = data?.message || data?.error || fallback || "Could not update cart";
+    console.error("Product listing cart error message:", message, "response JSON:", data);
+    if (typeof showToast === "function") showToast(message, "error");
+    else alert(message);
 }
 
 function normalizeColorOption(color) {
