@@ -606,6 +606,55 @@ def cart_line_total(user_id, product_id, color_id=None, size_id=None):
     """), {"uid": user_id, "pid": product_id, "cid": color_id, "sid": size_id}).scalar() or 0
 
 
+def request_cart_item_id(data=None):
+    data = data or {}
+    return normalize_optional_int(
+        data.get("cart_item_id")
+        or data.get("cart_id")
+        or request.args.get("cart_item_id")
+        or request.args.get("cart_id")
+    )
+
+
+def cart_item_total(cart_item):
+    if not cart_item:
+        return 0
+    product = cart_item.product or Product.query.get(cart_item.product_id)
+    if not product:
+        return 0
+    return float(product.price or 0) * int(cart_item.quantity or 0)
+
+
+def cart_item_payload(cart_item):
+    if not cart_item:
+        return {}
+    product = cart_item.product or Product.query.get(cart_item.product_id)
+    size_label = ""
+    if cart_item.size:
+        size_label = cart_item.size.size_label
+    elif product and product_size_type(product) == "universal":
+        size_label = "Universal Size"
+    return {
+        "cart_item_id": cart_item.id,
+        "product_id": cart_item.product_id,
+        "color_id": cart_item.color_id,
+        "size_id": cart_item.size_id,
+        "size_label": size_label,
+        "quantity": int(cart_item.quantity or 0),
+        "item_total": cart_item_total(cart_item),
+    }
+
+
+def validate_cart_lines_for_checkout(cart_lines):
+    for line in cart_lines or []:
+        product = line.get("product")
+        if not product:
+            return False, "A product in your cart is no longer available."
+        if product_requires_size(product.id) and not line.get("size_id"):
+            return False, f"Please select a size for {product.name} before checkout."
+    return True, None
+
+
 def consolidate_cart_duplicates(user_id):
     grouped = defaultdict(list)
     items = Cart.query.filter_by(user_id=user_id).order_by(Cart.id.asc()).all()
@@ -1310,6 +1359,9 @@ def create_pending_order_from_cart(user, selected_address, payment_method="Razor
     order_lines, total = cart_snapshot_for_user(user.id)
     if not order_lines:
         return None, "Cart is empty"
+    cart_valid, cart_error = validate_cart_lines_for_checkout(order_lines)
+    if not cart_valid:
+        return None, cart_error
 
     coupon_result = validate_coupon_for_user(user, coupon_code, total, cart_lines=order_lines)
     if not coupon_result["valid"]:
@@ -4725,7 +4777,8 @@ def cart_page():
             c.color_id,
             c.size_id,
             CASE
-                WHEN p.product_type = 'belt' AND p.size_type = 'universal' THEN 'Universal'
+                WHEN LOWER(COALESCE(p.product_type, 'belt')) = 'belt'
+                     AND LOWER(COALESCE(p.size_type, 'specific')) = 'universal' THEN 'Universal Size'
                 ELSE COALESCE(ps.size_label, '')
             END AS size_label,
             COALESCE(co.name, '') AS color_name,
@@ -4811,15 +4864,23 @@ def remove_cart(id):
         return jsonify({"success": False}), 401
 
     user = User.query.filter_by(email=session['email']).first()
-    color_id = request_color_id()
-    size_id = normalize_cart_size_id(id, request.args.get("size_id"))
-    clear_wallet_cart_sizes(id, user.id)
+    cart_item_id = request_cart_item_id()
 
-    db.session.execute(text("""
-        DELETE FROM cart WHERE user_id=:uid AND product_id=:pid
-        AND ((color_id IS NULL AND :cid IS NULL) OR color_id=:cid)
-        AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-    """), {"uid": user.id, "pid": id, "cid": color_id, "sid": size_id})
+    if cart_item_id:
+        cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
+        if not cart_item:
+            return jsonify({"success": False, "message": "Cart item not found"}), 404
+        db.session.delete(cart_item)
+    else:
+        color_id = request_color_id()
+        size_id = normalize_cart_size_id(id, request.args.get("size_id"))
+        clear_wallet_cart_sizes(id, user.id)
+
+        db.session.execute(text("""
+            DELETE FROM cart WHERE user_id=:uid AND product_id=:pid
+            AND ((color_id IS NULL AND :cid IS NULL) OR color_id=:cid)
+            AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
+        """), {"uid": user.id, "pid": id, "cid": color_id, "sid": size_id})
 
     db.session.commit()
 
@@ -5228,22 +5289,27 @@ def api_counts():
 @app.route('/update_quantity/<int:product_id>/<string:action>')
 def update_quantity(product_id, action):
     if 'email' not in session:
-        return jsonify({"status": "error"})
+        return jsonify({"success": False, "status": "error", "message": "Login required"}), 401
 
     user = User.query.filter_by(email=session['email']).first()
-    color_id = request_color_id()
-    size_id = normalize_cart_size_id(product_id, request.args.get("size_id"))
-    clear_wallet_cart_sizes(product_id, user.id)
-    cart_item = db.session.execute(text("""
-        SELECT * FROM cart
-        WHERE user_id=:uid AND product_id=:pid
-        AND ((color_id IS NULL AND :cid IS NULL) OR color_id=:cid)
-        AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-        LIMIT 1
-    """), {"uid": user.id, "pid": product_id, "cid": color_id, "sid": size_id}).fetchone()
+    cart_item_id = request_cart_item_id()
+    cart_item = None
+
+    if cart_item_id:
+        cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
+    else:
+        color_id = request_color_id()
+        size_id = normalize_cart_size_id(product_id, request.args.get("size_id"))
+        clear_wallet_cart_sizes(product_id, user.id)
+        cart_item = Cart.query.filter(
+            Cart.user_id == user.id,
+            Cart.product_id == product_id,
+            Cart.color_id.is_(None) if color_id is None else Cart.color_id == color_id,
+            Cart.size_id.is_(None) if size_id is None else Cart.size_id == size_id
+        ).order_by(Cart.id.asc()).first()
 
     if not cart_item:
-        return jsonify({"status": "not_found"})
+        return jsonify({"success": False, "status": "not_found", "message": "Cart item not found"}), 404
 
     qty = int(cart_item.quantity) if cart_item else 0
 
@@ -5251,19 +5317,13 @@ def update_quantity(product_id, action):
         qty += 1
     elif action == "minus":
         qty -= 1
+    else:
+        return jsonify({"success": False, "status": "error", "message": "Invalid quantity action"}), 400
 
     if qty <= 0:
-        db.session.execute(text("""
-            DELETE FROM cart WHERE user_id=:uid AND product_id=:pid
-            AND ((color_id IS NULL AND :cid IS NULL) OR color_id=:cid)
-            AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-        """), {"uid": user.id, "pid": product_id, "cid": color_id, "sid": size_id})
+        db.session.delete(cart_item)
     else:
-        db.session.execute(text("""
-            UPDATE cart SET quantity=:q WHERE user_id=:uid AND product_id=:pid
-            AND ((color_id IS NULL AND :cid IS NULL) OR color_id=:cid)
-            AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-        """), {"q": qty, "uid": user.id, "pid": product_id, "cid": color_id, "sid": size_id})
+        cart_item.quantity = qty
 
     db.session.commit()
 
@@ -5272,7 +5332,8 @@ def update_quantity(product_id, action):
         "success": True,
         "status": "ok",
         "quantity": max(qty, 0),
-        "item_total": float(cart_line_total(user.id, product_id, color_id, size_id)) if qty > 0 else 0,
+        "item_total": cart_item_total(cart_item) if qty > 0 else 0,
+        "cart_item": cart_item_payload(cart_item) if qty > 0 else None,
         **payload,
         "message": "Cart updated"
     })
@@ -5462,7 +5523,7 @@ def checkout_review():
 
     # ✅ Fetch cart items
     cart_items = db.session.execute(text("""
-        SELECT c.product_id, c.color_id, c.size_id, c.quantity, ps.size_label
+        SELECT c.id AS cart_id, c.product_id, c.color_id, c.size_id, c.quantity, ps.size_label
         FROM cart c
         LEFT JOIN product_sizes ps ON ps.id = c.size_id
         WHERE c.user_id = :uid
@@ -5479,6 +5540,15 @@ def checkout_review():
     # ✅ Build cart details with product info
     cart_details = []
     total = 0
+    order_lines, _ = cart_snapshot_for_user(user.id)
+    cart_valid, cart_error = validate_cart_lines_for_checkout(order_lines)
+    if not cart_valid:
+        return jsonify({
+            "success": False,
+            "message": cart_error,
+            "cart": [],
+            "total": 0
+        }), 400
 
     for item in cart_items:
         product = Product.query.get(item.product_id)
@@ -5487,19 +5557,19 @@ def checkout_review():
             item_total = product.price * item.quantity
             total += item_total
             cart_details.append({
+                "cart_item_id": item.cart_id,
                 "product_id": product.id,
                 "product_name": product.name,
                 "color_id": item.color_id,
                 "color_name": color.name if color else None,
                 "size_id": item.size_id,
-                "size_label": "Universal" if product_size_type(product) == "universal" else item.size_label,
+                "size_label": "Universal Size" if product_size_type(product) == "universal" else item.size_label,
                 "quantity": item.quantity,
                 "price": product.price,
                 "item_total": item_total
             })
 
     coupon_code = current_coupon_code()
-    order_lines, _ = cart_snapshot_for_user(user.id)
     if coupon_code:
         coupon_result = validate_coupon_for_user(user, coupon_code, total, cart_lines=order_lines)
     else:

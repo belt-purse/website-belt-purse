@@ -2755,10 +2755,18 @@ function toggleCart(productId, btn) {
             color_id: selectedColorId
         })
     })
-    .then(res => res.json())
-    .then(data => {
+    .then(res => res.json().then(data => ({ ok: res.ok, status: res.status, data })))
+    .then(({ ok, status, data }) => {
 
-        if (data.error) return;
+        if (!ok || data.error) {
+            console.error("Cart toggle error:", data);
+            if (status === 401 || data.error === "login required" || data.error === "Login required") {
+                openPopup();
+            } else {
+                alert(data.message || data.error || "Could not update cart");
+            }
+            return;
+        }
 
         if (data.in_cart) {
             btn.classList.add("active");
@@ -2771,6 +2779,10 @@ function toggleCart(productId, btn) {
         const cartCount = document.getElementById("cartCount");
         if (cartCount) cartCount.innerText = data.count;
 
+    })
+    .catch(err => {
+        console.error("Cart toggle request failed:", err);
+        alert("Could not update cart. Please try again.");
     })
     .finally(() => btn.disabled = false);
 }
@@ -2882,7 +2894,10 @@ function handleProductBuyNow(productId) {
     .then(({ ok, status, data }) => {
         if (!ok || data.error) {
             if (status === 401 || data.error === "Login required") openPopup();
-            else alert(data.error || "Could not add item to cart");
+            else {
+                console.error("Buy now cart error:", data);
+                alert(data.message || data.error || "Could not add item to cart");
+            }
             return;
         }
 

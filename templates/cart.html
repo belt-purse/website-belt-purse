@@ -25,7 +25,7 @@
         <div class="cart-items cart-items-list" id="cartItems">
             {% for p in products %}
             {% set variant_key = p.id|string ~ '-' ~ (p.color_id or 'no-color')|string ~ '-' ~ (p.size_id or 'no-size')|string %}
-            <div class="cart-card cart-item-card" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">
+            <div class="cart-card cart-item-card" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">
 
                 <img src="{{ p.image_url or '/static/images/default.png' }}" class="product-img cart-item-image">
 
@@ -52,16 +52,14 @@
 </p>
 
                     <div class="qty-box cart-qty-control">
-                        <button class="qty-btn minus" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">−</button>
+                        <button class="qty-btn minus" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">−</button>
                         <span class="qty-number" id="qty-{{ variant_key }}">{{ p.quantity }}</span>
-                        <button class="qty-btn plus" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">+</button>
+                        <button class="qty-btn plus" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">+</button>
                     </div>
 
    <div class="actions cart-action-buttons">
-    <button class="removeBtn remove-btn cart-remove-btn cart-item-remove-btn" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Remove</button>
-    <!-- Wishlist hidden temporarily - keep code for future use
-    <button class="wishBtn" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Move to Wishlist</button>
-    -->
+    <button class="removeBtn remove-btn cart-remove-btn cart-item-remove-btn" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Remove</button>
+    <button class="wishBtn" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Move to Wishlist</button>
 </div>
                 </div>
             </div>
@@ -665,6 +663,29 @@ function smoothRemoveCard(card){
     return Promise.resolve();
 }
 
+function cartActionParams(card, btn){
+    return {
+        cartId: btn?.dataset.cartId || card?.dataset.cartId || "",
+        id: btn?.dataset.id || card?.dataset.id || "",
+        color: btn?.dataset.color || card?.dataset.color || "",
+        size: btn?.dataset.size || card?.dataset.size || ""
+    };
+}
+
+function cartMutationUrl(path, params){
+    const query = new URLSearchParams();
+    if(params.cartId) query.set("cart_item_id", params.cartId);
+    if(params.color) query.set("color_id", params.color);
+    if(params.size) query.set("size_id", params.size);
+    return `${path}?${query.toString()}`;
+}
+
+function handleCartError(data, fallback){
+    const message = data?.message || data?.error || fallback || "Cart action failed";
+    console.error("Cart error:", data || message);
+    showLiveToast(message, "error");
+}
+
 
 
 document.querySelectorAll(".removeBtn").forEach(btn => {
@@ -672,22 +693,25 @@ document.querySelectorAll(".removeBtn").forEach(btn => {
         if(this.dataset.loading === "true") return;
 
         let card = this.closest(".cart-card");
-        let id = this.dataset.id || card.dataset.id;
-        let color = this.dataset.color || card.dataset.color || "";
-        let size = this.dataset.size || card.dataset.size || "";
+        const params = cartActionParams(card, this);
         const restore = typeof setButtonLoading === "function" ? setButtonLoading(this, "Removing...") : (()=>{});
 
-        fetch(`/remove_cart/${id}?color_id=${color}&size_id=${size}`)
-        .then(res => res.json())
-        .then(data => {
+        fetch(cartMutationUrl(`/remove_cart/${params.id}`, params))
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
 
-            if (data.success) {
+            if (ok && data.success) {
                 smoothRemoveCard(card).then(() => updateCartSummary(data));
                 showLiveToast(data.message || "Removed from cart", "success");
+            } else {
+                handleCartError(data, "Could not remove item");
             }
 
         })
-        .catch(() => showLiveToast("Something went wrong. Please try again.", "error"))
+        .catch(err => {
+            console.error("Cart remove error:", err);
+            showLiveToast("Something went wrong. Please try again.", "error");
+        })
         .finally(restore);
     });
 });
@@ -702,23 +726,30 @@ document.querySelectorAll(".wishBtn").forEach(btn=>{
     btn.addEventListener("click", ()=>{
         if(btn.dataset.loading === "true") return;
         let card = btn.closest(".cart-card");
-        let id = btn.dataset.id || card.dataset.id;
-        let color = btn.dataset.color || card.dataset.color || "";
-        let size = btn.dataset.size || card.dataset.size || "";
+        const params = cartActionParams(card, btn);
         const restore = typeof setButtonLoading === "function" ? setButtonLoading(btn, "Moving...") : (()=>{});
 
-        fetch(`/add_to_wishlist/${id}?color_id=${color}`)
-        .then(()=>{
-            return fetch(`/remove_cart/${id}?color_id=${color}&size_id=${size}`);
+        fetch(`/add_to_wishlist/${params.id}?color_id=${params.color}`)
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data })=>{
+            if(!ok || !data.success){
+                throw new Error(data.message || data.error || "Could not move item to wishlist");
+            }
+            return fetch(cartMutationUrl(`/remove_cart/${params.id}`, params));
         })
-        .then(res=>res.json())
-        .then(data=>{
-            if(data.success){
+        .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data })=>{
+            if(ok && data.success){
                 smoothRemoveCard(card).then(() => updateCartSummary(data));
                 showLiveToast("Moved to wishlist", "success");
+            } else {
+                handleCartError(data, "Could not move item to wishlist");
             }
         })
-        .catch(() => showLiveToast("Something went wrong. Please try again.", "error"))
+        .catch(err => {
+            console.error("Move to wishlist error:", err);
+            showLiveToast(err.message || "Something went wrong. Please try again.", "error");
+        })
         .finally(restore);
     });
 });
@@ -1108,16 +1139,14 @@ document.querySelectorAll(".plus").forEach(btn=>{
     btn.addEventListener("click", ()=>{
         if(btn.dataset.loading === "true") return;
         let card = btn.closest(".cart-card");
-        let id = btn.dataset.id || card.dataset.id;
-        let color = btn.dataset.color || card.dataset.color || "";
-        let size = btn.dataset.size || card.dataset.size || "";
+        const params = cartActionParams(card, btn);
         const restore = typeof setButtonLoading === "function" ? setButtonLoading(btn, "...") : (()=>{});
 
-        fetch(`/update_quantity/${id}/plus?color_id=${color}&size_id=${size}`)
-        .then(res=>res.json())
-        .then(data=>{
-            if(!data.success && data.status !== "ok"){
-                showLiveToast(data.message || "Could not update cart", "error");
+        fetch(cartMutationUrl(`/update_quantity/${params.id}/plus`, params))
+        .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data })=>{
+            if(!ok || (!data.success && data.status !== "ok")){
+                handleCartError(data, "Could not update cart");
                 return;
             }
             let qtyEl = card.querySelector(".qty-number");
@@ -1126,7 +1155,10 @@ document.querySelectorAll(".plus").forEach(btn=>{
             if(itemEl) itemEl.innerText = "Total: " + formatMoney(data.item_total);
             updateCartSummary(data);
         })
-        .catch(() => showLiveToast("Something went wrong. Please try again.", "error"))
+        .catch(err => {
+            console.error("Cart quantity plus error:", err);
+            showLiveToast("Something went wrong. Please try again.", "error");
+        })
         .finally(restore);
     });
 });
@@ -1136,16 +1168,14 @@ document.querySelectorAll(".minus").forEach(btn=>{
     btn.addEventListener("click", ()=>{
         if(btn.dataset.loading === "true") return;
         let card = btn.closest(".cart-card");
-        let id = btn.dataset.id || card.dataset.id;
-        let color = btn.dataset.color || card.dataset.color || "";
-        let size = btn.dataset.size || card.dataset.size || "";
+        const params = cartActionParams(card, btn);
         const restore = typeof setButtonLoading === "function" ? setButtonLoading(btn, "...") : (()=>{});
 
-        fetch(`/update_quantity/${id}/minus?color_id=${color}&size_id=${size}`)
-        .then(res=>res.json())
-        .then(data=>{
-            if(!data.success && data.status !== "ok"){
-                showLiveToast(data.message || "Could not update cart", "error");
+        fetch(cartMutationUrl(`/update_quantity/${params.id}/minus`, params))
+        .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data })=>{
+            if(!ok || (!data.success && data.status !== "ok")){
+                handleCartError(data, "Could not update cart");
                 return;
             }
             let qtyEl = card.querySelector(".qty-number");
@@ -1160,37 +1190,56 @@ document.querySelectorAll(".minus").forEach(btn=>{
 
             updateCartSummary(data);
         })
-        .catch(() => showLiveToast("Something went wrong. Please try again.", "error"))
+        .catch(err => {
+            console.error("Cart quantity minus error:", err);
+            showLiveToast("Something went wrong. Please try again.", "error");
+        })
         .finally(restore);
     });
 });
 
 
 function removeItem(id, color = "", size = ""){
-    fetch(`/remove_cart/${id}?color_id=${color}&size_id=${size}`)
-    .then(res=>res.json())
-    .then(data=>{
-        if(data.success){
+    const params = { id, color, size, cartId: "" };
+    fetch(cartMutationUrl(`/remove_cart/${id}`, params))
+    .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data })=>{
+        if(ok && data.success){
             updateCartSummary(data);
             showLiveToast(data.message || "Removed from cart", "success");
+        } else {
+            handleCartError(data, "Could not remove item");
         }
     })
-    .catch(() => showLiveToast("Something went wrong. Please try again.", "error"));
+    .catch(err => {
+        console.error("Cart remove error:", err);
+        showLiveToast("Something went wrong. Please try again.", "error");
+    });
 }
 
 function moveToWishlist(id, color = "", size = ""){
+    const params = { id, color, size, cartId: "" };
     fetch(`/add_to_wishlist/${id}?color_id=${color}`)
-    .then(()=>{
-        return fetch(`/remove_cart/${id}?color_id=${color}&size_id=${size}`);
+    .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data })=>{
+        if(!ok || !data.success){
+            throw new Error(data.message || data.error || "Could not move item to wishlist");
+        }
+        return fetch(cartMutationUrl(`/remove_cart/${id}`, params));
     })
-    .then(res=>res.json())
-    .then(data=>{
-        if(data.success){
+    .then(res=>res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data })=>{
+        if(ok && data.success){
             updateCartSummary(data);
             showLiveToast("Moved to wishlist", "success");
+        } else {
+            handleCartError(data, "Could not move item to wishlist");
         }
     })
-    .catch(() => showLiveToast("Something went wrong. Please try again.", "error"));
+    .catch(err => {
+        console.error("Move to wishlist error:", err);
+        showLiveToast(err.message || "Something went wrong. Please try again.", "error");
+    });
 }
 </script>
 
