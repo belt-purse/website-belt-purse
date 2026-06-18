@@ -3,6 +3,7 @@
 {% block meta_description %}Shop premium leather belts, wallets and fashion accessories from Belt Purse Store. Browse quality designs with online ordering across India.{% endblock %}
 {% set active_category = (request.args.get('category') or '')|lower %}
 {% set collection_name = 'Belts' if active_category == 'belt' else ('Wallets' if active_category == 'wallet' else 'Products') %}
+{% set collection_has_banner = true %}
 {% set collection_url = 'https://www.belt-purse.com/products-page' %}
 {% block extra_head %}
 <script type="application/ld+json">
@@ -34,6 +35,87 @@
     padding-top: 15px;
     padding-left: 12px;
     padding-right: 12px;
+}
+
+.products-page.has-collection-banner {
+    margin-top: 0;
+    padding: 0;
+    width: 100%;
+    max-width: none;
+    overflow: visible;
+}
+
+.collection-banner {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    height: 50vh;
+    min-height: 360px;
+    position: relative;
+    overflow: hidden;
+    background: #f1eee8;
+    cursor: grab;
+    user-select: none;
+    touch-action: pan-y;
+}
+
+.collection-banner.is-dragging {
+    cursor: grabbing;
+}
+
+.collection-banner-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.65s ease;
+}
+
+.collection-banner-slide.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.collection-banner-slide picture,
+.collection-banner-slide img {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.collection-banner-slide img {
+    object-fit: cover;
+    object-position: center;
+    pointer-events: none;
+}
+
+.collection-banner-dots {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 9px;
+    z-index: 2;
+}
+
+.collection-banner-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 0;
+    padding: 0;
+    background: rgba(255,255,255,0.55);
+    cursor: pointer;
+}
+
+.collection-banner-dot.active {
+    background: #ffffff;
+}
+
+.collection-products-content {
+    padding: 28px 12px 0;
 }
 
 /* ===== HEADER COMPACT ===== */
@@ -619,9 +701,46 @@
         grid-template-columns: 1fr !important;
     }
 }
+
+@media (max-width: 768px) {
+    .collection-banner {
+        height: 43vh;
+        min-height: 300px;
+    }
+
+    .collection-products-content {
+        padding-top: 20px;
+    }
+
+}
 </style>
 
-<div class="products-page">
+<div class="products-page {% if collection_has_banner %}has-collection-banner{% endif %}">
+    {% if collection_has_banner %}
+    <section class="collection-banner" aria-label="{{ collection_name }} banner">
+        {% if collection_banners %}
+            {% for banner in collection_banners %}
+            <div class="collection-banner-slide {% if loop.first %}active{% endif %}">
+                <picture>
+                    {% if banner.mobile_media_url %}
+                    <source media="(max-width: 768px)" srcset="{{ banner.mobile_media_url }}">
+                    {% endif %}
+                    <img src="{{ banner.media_url }}" alt="{{ banner.alt_text or collection_name ~ ' collection banner' }}">
+                </picture>
+            </div>
+            {% endfor %}
+
+            {% if collection_banners|length > 1 %}
+            <div class="collection-banner-dots" aria-label="Banner slides">
+                {% for banner in collection_banners %}
+                <button type="button" class="collection-banner-dot {% if loop.first %}active{% endif %}" aria-label="Show banner {{ loop.index }}"></button>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endif %}
+    </section>
+    <div class="collection-products-content">
+    {% else %}
     <nav class="seo-breadcrumb" aria-label="Breadcrumb">
         <a href="/">Home</a> <span>/</span>
         <span>{{ collection_name }}</span>
@@ -650,8 +769,12 @@
            
         </div>
     </div>
+    {% endif %}
 
     <div id="allProducts" class="products-grid"></div>
+    {% if collection_has_banner %}
+    </div>
+    {% endif %}
 </div>
 
 <div id="sizeModal" class="size-modal hidden">
@@ -683,6 +806,16 @@ let selectedProductCardButton = null;
 
 function getProductBaseId(product) {
     return product.product_id || product.id;
+}
+
+function escapeHtml(value) {
+    return String(value || "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[char]));
 }
 
 function getProductColorId(product) {
@@ -1281,7 +1414,7 @@ function renderProductsGrid(products) {
             : "";
 
         const discountHTML = product.discount_percent > 0
-            ? `<span class="discount-badge">-${product.discount_percent}%</span>`
+            ? `<span class="discount-badge">-${product.discount_percent}% OFF</span>`
             : "";
 
         const oldPriceHTML = product.original_price
@@ -1290,6 +1423,10 @@ function renderProductsGrid(products) {
 
         const ratingHTML = product.rating
             ? `<div class="prd-rating">⭐ ${product.rating}</div>`
+            : "";
+
+        const featureLineHTML = product.feature_line
+            ? `<div class="product-feature-line">${escapeHtml(product.feature_line)}</div>`
             : "";
 
         const div = document.createElement("div");
@@ -1303,6 +1440,7 @@ function renderProductsGrid(products) {
             <div class="prd-info">
                 <h4>${product.name}</h4>
                 ${ratingHTML}
+                ${featureLineHTML}
                 <div class="prd-price-box">
                     <span>₹${product.price}</span>
                     ${oldPriceHTML}
@@ -1382,7 +1520,98 @@ function loadAllProducts() {
         .catch(err => console.error("Product load error:", err));
 }
 
+function initCollectionBannerSlider() {
+    const slider = document.querySelector(".collection-banner");
+    if (!slider) return;
+
+    const slides = Array.from(slider.querySelectorAll(".collection-banner-slide"));
+    const dots = Array.from(slider.querySelectorAll(".collection-banner-dot"));
+    if (!slides.length) return;
+
+    let current = 0;
+    let autoSlide = null;
+    let pointerStartX = 0;
+    let isDragging = false;
+
+    function showSlide(index) {
+        const nextIndex = (index + slides.length) % slides.length;
+        slides.forEach((slide, slideIndex) => {
+            slide.classList.toggle("active", slideIndex === nextIndex);
+        });
+        dots.forEach((dot, dotIndex) => {
+            dot.classList.toggle("active", dotIndex === nextIndex);
+        });
+        current = nextIndex;
+    }
+
+    function nextSlide() {
+        showSlide(current + 1);
+    }
+
+    function startAutoSlide() {
+        if (slides.length <= 1) return;
+        stopAutoSlide();
+        autoSlide = setInterval(nextSlide, 5500);
+    }
+
+    function stopAutoSlide() {
+        if (autoSlide) {
+            clearInterval(autoSlide);
+            autoSlide = null;
+        }
+    }
+
+    dots.forEach((dot, index) => {
+        dot.addEventListener("click", () => {
+            stopAutoSlide();
+            showSlide(index);
+            startAutoSlide();
+        });
+    });
+
+    slider.addEventListener("pointerdown", event => {
+        if (slides.length <= 1) return;
+        pointerStartX = event.clientX;
+        isDragging = true;
+        slider.classList.add("is-dragging");
+        slider.setPointerCapture?.(event.pointerId);
+        stopAutoSlide();
+    });
+
+    slider.addEventListener("pointerup", event => {
+        if (!isDragging) return;
+        const diff = pointerStartX - event.clientX;
+        isDragging = false;
+        slider.classList.remove("is-dragging");
+        if (slider.hasPointerCapture?.(event.pointerId)) {
+            slider.releasePointerCapture(event.pointerId);
+        }
+        if (Math.abs(diff) > 45) {
+            showSlide(diff > 0 ? current + 1 : current - 1);
+        }
+        startAutoSlide();
+    });
+
+    slider.addEventListener("pointercancel", event => {
+        isDragging = false;
+        slider.classList.remove("is-dragging");
+        if (slider.hasPointerCapture?.(event.pointerId)) {
+            slider.releasePointerCapture(event.pointerId);
+        }
+        startAutoSlide();
+    });
+
+    slider.addEventListener("mouseenter", stopAutoSlide);
+    slider.addEventListener("mouseleave", startAutoSlide);
+
+    showSlide(0);
+    startAutoSlide();
+}
+
 /* INIT */
-document.addEventListener("DOMContentLoaded", loadAllProducts);
+document.addEventListener("DOMContentLoaded", () => {
+    initCollectionBannerSlider();
+    loadAllProducts();
+});
 </script>
 {% endblock %}

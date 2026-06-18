@@ -1,12 +1,38 @@
 {% extends "admin/base_admin.html" %}
 {% block content %}
 
+{% set category_cards = [
+    {'key': 'hero_image', 'title': 'Hero Slider Images', 'description': 'Manage homepage hero desktop/mobile images and click targets.'},
+    {'key': 'style_video', 'title': 'Crafted for Everyday Style Videos', 'description': 'Manage the crafted style videos shown on the homepage.'},
+    {'key': 'auto_slider_image', 'title': 'Auto Image Slider Images', 'description': 'Manage the auto sliding product image carousel.'},
+    {'key': 'all_products_banner', 'title': 'All Products Banner', 'description': 'Manage the all products page desktop/mobile banner image.'},
+    {'key': 'belt_page_banner', 'title': 'Belt Page Banner', 'description': 'Manage the belts page desktop/mobile banner image.'},
+    {'key': 'wallet_page_banner', 'title': 'Wallet Page Banner', 'description': 'Manage the wallets page desktop/mobile banner image.'}
+] %}
+
 <div class="media-admin-page">
     <div class="media-admin-header">
         <div>
-            <h2>Website Media</h2>
-            <p>Manage homepage hero slider images, Crafted for Everyday Style videos, and auto slider images by position.</p>
+            <div class="media-breadcrumb">
+                <a href="{{ url_for('admin_homepage_media') }}">Website Media</a>
+                {% if selected_category %}
+                    <span>&rsaquo;</span>
+                    <span>{{ categories[selected_category].title }}</span>
+                {% endif %}
+            </div>
+            <h2>{% if selected_category %}{{ categories[selected_category].title }}{% else %}Website Media{% endif %}</h2>
+            <p>
+                {% if selected_category %}
+                    Manage this media category without changing the other homepage media sections.
+                {% else %}
+                    Choose one media category to manage.
+                {% endif %}
+            </p>
         </div>
+
+        {% if selected_category %}
+        <a class="media-back-btn" href="{{ url_for('admin_homepage_media') }}">Back to Website Media</a>
+        {% endif %}
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -17,6 +43,19 @@
         {% endif %}
     {% endwith %}
 
+    {% if not selected_category %}
+    <div class="media-category-grid">
+        {% for item in category_cards %}
+        <a class="media-category-card" href="{{ url_for('admin_homepage_media', category=item.key) }}">
+            <span>{{ loop.index }}</span>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.description }}</p>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if selected_category == 'hero_image' %}
     <section class="media-section">
         <div class="media-section-head">
             <h3>Hero Slider Images</h3>
@@ -53,6 +92,21 @@
                         <label class="media-file">
                             <span>Change Mobile Image</span>
                             <input type="file" name="mobile_media_file" accept="image/png,image/jpeg,image/webp">
+                        </label>
+
+                        <label>
+                            <span>Hero Image Click Target</span>
+                            <select name="hero_link_target" class="hero-link-target">
+                                <option value="none" {% if card.hero_link_target == 'none' %}selected{% endif %}>No Link</option>
+                                <option value="all_products" {% if card.hero_link_target == 'all_products' %}selected{% endif %}>All Products</option>
+                                <option value="belts" {% if card.hero_link_target == 'belts' %}selected{% endif %}>Belts Page</option>
+                                <option value="wallets" {% if card.hero_link_target == 'wallets' %}selected{% endif %}>Wallets Page</option>
+                                <option value="custom" {% if card.hero_link_target == 'custom' %}selected{% endif %}>Custom URL</option>
+                            </select>
+                        </label>
+                        <label class="custom-link-field">
+                            <span>Custom URL</span>
+                            <input type="text" name="custom_button_link" value="{{ card.button_link if card.hero_link_target == 'custom' else '' }}" placeholder="https://example.com or /custom-page">
                         </label>
 
                         <label class="media-checkbox">
@@ -97,6 +151,20 @@
                     <small class="media-size-note">Desktop: 2400 x 1350 px or 1920 x 1080 px</small>
                     <small class="media-size-note">Mobile: 1080 x 1920 px</small>
                     <label>
+                        <span>Hero Image Click Target</span>
+                        <select name="hero_link_target" class="hero-link-target">
+                            <option value="none">No Link</option>
+                            <option value="all_products">All Products</option>
+                            <option value="belts">Belts Page</option>
+                            <option value="wallets">Wallets Page</option>
+                            <option value="custom">Custom URL</option>
+                        </select>
+                    </label>
+                    <label class="custom-link-field">
+                        <span>Custom URL</span>
+                        <input type="text" name="custom_button_link" placeholder="https://example.com or /custom-page">
+                    </label>
+                    <label>
                         <span>Position</span>
                         <input type="number" name="position" min="4" placeholder="Auto">
                     </label>
@@ -109,7 +177,9 @@
             </div>
         </div>
     </section>
+    {% endif %}
 
+    {% if selected_category == 'style_video' %}
     <section class="media-section">
         <div class="media-section-head">
             <h3>Crafted for Everyday Style Videos</h3>
@@ -182,7 +252,9 @@
             </div>
         </div>
     </section>
+    {% endif %}
 
+    {% if selected_category == 'auto_slider_image' %}
     <section class="media-section">
         <div class="media-section-head">
             <h3>Auto Image Slider Images</h3>
@@ -267,15 +339,128 @@
             </div>
         </div>
     </section>
+    {% endif %}
+
+    {% if selected_category in ['all_products_banner', 'belt_page_banner', 'wallet_page_banner'] %}
+    {% set banner_cards = all_products_banner_cards if selected_category == 'all_products_banner' else (belt_banner_cards if selected_category == 'belt_page_banner' else wallet_banner_cards) %}
+    {% set banner_title = 'All Products Banner' if selected_category == 'all_products_banner' else ('Belt Page Banner' if selected_category == 'belt_page_banner' else 'Wallet Page Banner') %}
+    <section class="media-section">
+        <div class="media-section-head">
+            <h3>{{ banner_title }} Slider</h3>
+        </div>
+
+        <div class="media-grid media-banner-grid">
+            {% for card in banner_cards %}
+                <div class="media-card">
+                <div class="media-position-label">Position {{ card.position }}</div>
+                <div class="media-preview-label">Desktop Image Preview</div>
+                {% if card.preview_url %}
+                    <img class="media-banner-preview" src="{{ card.preview_url }}" alt="{{ card.media.alt_text if card.media and card.media.alt_text else banner_title }}">
+                {% else %}
+                    <div class="media-missing">No image selected</div>
+                {% endif %}
+
+                <div class="media-preview-label">Mobile Image Preview</div>
+                {% if card.mobile_preview_url %}
+                    <img class="media-mobile-preview" src="{{ card.mobile_preview_url }}" alt="Mobile {{ banner_title }}">
+                {% else %}
+                    <div class="media-mobile-empty">No mobile image uploaded, desktop image will be used on mobile</div>
+                {% endif %}
+
+                <div class="media-card-body">
+                    <span>{{ 'Static fallback image' if card.is_fallback else 'Uploaded image' }}</span>
+                    <small class="media-size-note">Desktop banner: 1920 x 900 px or wider landscape image</small>
+                    <small class="media-size-note">Mobile banner: 1080 x 1200 px or clean portrait image</small>
+
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_homepage_media_position', media_type=selected_category, position=card.position) }}">
+                        <label class="media-file">
+                            <span>Desktop Image</span>
+                            <input type="file" name="media_file" accept="image/png,image/jpeg,image/webp">
+                        </label>
+                        <label class="media-file">
+                            <span>Mobile Image</span>
+                            <input type="file" name="mobile_media_file" accept="image/png,image/jpeg,image/webp">
+                        </label>
+                        <label>
+                            <span>Alt Text</span>
+                            <input type="text" name="alt_text" maxlength="255" value="{{ card.media.alt_text if card.media and card.media.alt_text else banner_title }}">
+                        </label>
+
+                        <label class="media-checkbox">
+                            <input type="checkbox" name="is_active" {% if card.is_active %}checked{% endif %}>
+                            <span>Active</span>
+                        </label>
+
+                        <div class="media-actions">
+                            <button type="submit">Save</button>
+                            {% if card.media %}
+                                <a class="danger" href="{{ url_for('admin_delete_homepage_media', media_id=card.media.id) }}">{{ 'Remove/Reset' if card.has_fallback else 'Delete' }}</a>
+                            {% else %}
+                                <span class="media-muted">Fallback active</span>
+                            {% endif %}
+                        </div>
+                    </form>
+
+                    {% if card.media %}
+                    <form class="media-position-form" method="POST" action="{{ url_for('admin_move_homepage_media', media_id=card.media.id) }}">
+                        <label>
+                            <span>Position</span>
+                            <input type="number" name="position" min="1" value="{{ card.position }}" required>
+                        </label>
+                        <button type="submit">Update Order</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="media-card media-add-card">
+                <div class="media-position-label">+ Add Banner Slide</div>
+                <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_add_extra_homepage_media', media_type=selected_category) }}">
+                    <label class="media-file">
+                        <span>Desktop Image</span>
+                        <input type="file" name="media_file" accept="image/png,image/jpeg,image/webp" required>
+                    </label>
+                    <label class="media-file">
+                        <span>Mobile Image</span>
+                        <input type="file" name="mobile_media_file" accept="image/png,image/jpeg,image/webp">
+                    </label>
+                    <label>
+                        <span>Alt Text</span>
+                        <input type="text" name="alt_text" maxlength="255" placeholder="{{ banner_title }}">
+                    </label>
+                    <label>
+                        <span>Position</span>
+                        <input type="number" name="position" min="1" placeholder="Auto" required>
+                    </label>
+                    <label class="media-checkbox">
+                        <input type="checkbox" name="is_active" checked>
+                        <span>Active</span>
+                    </label>
+                    <button type="submit">Add Banner Slide</button>
+                </form>
+            </div>
+        </div>
+    </section>
+    {% endif %}
 </div>
 
 <style>
 .media-admin-page { padding: 32px; background: #fff; min-height: 100vh; }
+.media-admin-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+.media-breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: #6b7280; font-size: 13px; }
+.media-breadcrumb a { color: #0A5C56; text-decoration: none; }
 .media-admin-header h2 { margin: 0 0 6px; font-weight: 400; color: #111; }
-.media-admin-header p { margin: 0 0 24px; color: #555; }
+.media-admin-header p { margin: 0; color: #555; }
+.media-back-btn { padding: 9px 13px; background: #0A5C56; color: #fff !important; text-decoration: none; font-size: 13px; white-space: nowrap; }
 .media-alert { margin-bottom: 14px; padding: 12px 14px; border: 1px solid rgba(10,92,86,0.22); color: #0A5C56; background: rgba(10,92,86,0.06); }
 .media-alert.error { border-color: rgba(180,35,24,0.25); color: #b42318; background: rgba(180,35,24,0.06); }
-.media-section { margin-top: 28px; }
+.media-category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+.media-category-card { display: block; min-height: 190px; padding: 22px; border: 1px solid #dfe7e5; color: #111; text-decoration: none; background: #fff; box-shadow: 0 14px 35px rgba(0,0,0,0.05); }
+.media-category-card span { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; margin-bottom: 22px; background: #0A5C56; color: #fff; border-radius: 50%; }
+.media-category-card h3 { margin: 0 0 10px; color: #083E3A; font-weight: 500; }
+.media-category-card p { margin: 0; color: #606b68; line-height: 1.45; }
+.media-section { margin-top: 0; }
 .media-section-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
 .media-section-head h3 { margin: 0; font-weight: 400; color: #083E3A; }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; align-items: start; }
@@ -287,6 +472,7 @@
 .media-missing { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #f4f4f4; }
 .media-card .media-mobile-preview { aspect-ratio: 9 / 16; object-fit: cover; }
 .media-card .media-auto-slider-preview { aspect-ratio: 3 / 4; object-fit: cover; }
+.media-card .media-banner-preview { aspect-ratio: 16 / 7; object-fit: cover; }
 .media-mobile-empty { min-height: 92px; padding: 18px 12px; display: flex; align-items: center; justify-content: center; text-align: center; color: #777; background: #f4f4f4; font-size: 13px; line-height: 1.4; }
 .media-card video,
 .media-video-missing { aspect-ratio: 9 / 16; }
@@ -296,8 +482,10 @@
 .media-size-note { display: block; color: #777; font-size: 12px; line-height: 1.35; margin: -5px 0 9px; }
 .media-card label span,
 .media-add-card label span { display: block; color: #083E3A; font-size: 13px; margin-bottom: 7px; }
-.media-card input { width: 100%; padding: 10px 11px; border: 1px solid #d9dedc; border-radius: 0; font-family: 'Jost', sans-serif; }
+.media-card input,
+.media-card select { width: 100%; padding: 10px 11px; border: 1px solid #d9dedc; border-radius: 0; font-family: 'Jost', sans-serif; background: #fff; }
 .media-file { display: block; margin-bottom: 12px; }
+.custom-link-field { display: block; margin: 12px 0; }
 .media-checkbox { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; }
 .media-checkbox input { width: auto; }
 .media-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px; }
@@ -310,8 +498,13 @@
 .media-position-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid #edf0ef; display: grid; gap: 9px; }
 .media-add-card { padding: 0; }
 .media-add-card form { padding: 12px; display: grid; gap: 12px; }
+@media (max-width: 900px) {
+    .media-category-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 768px) {
     .media-admin-page { padding: 20px 12px; }
+    .media-admin-header { flex-direction: column; }
+    .media-back-btn { width: 100%; text-align: center; }
     .media-section-head { align-items: flex-start; flex-direction: column; }
     .media-grid { grid-template-columns: 1fr; }
 }

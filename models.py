@@ -76,6 +76,7 @@ class Product(db.Model):
 
     offer = db.Column(db.String(100))
     guarantee = db.Column(db.String(100))
+    feature_line = db.Column(db.String(100), nullable=True)
     material = db.Column(db.String(255))
     description = db.Column(db.Text)
     composition_care = db.Column(db.Text, nullable=True)

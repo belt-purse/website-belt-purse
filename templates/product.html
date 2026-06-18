@@ -3614,7 +3614,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </div>
                 {% if product.discount_percent and product.discount_percent > 0 %}
-                    <span class="discount-badge">{{ product.discount_percent }}% OFF</span>
+                    <span class="discount-badge">-{{ product.discount_percent }}% OFF</span>
                 {% endif %}
             </div>
 
@@ -3631,7 +3631,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 {% endif %}
                 <span class="price-new">₹{{ product.price }}</span>
                 {% if computed_discount and computed_discount > 0 %}
-                    <span class="discount-badge">{{ computed_discount|int }}% OFF</span>
+                    <span class="discount-badge">-{{ computed_discount|int }}% OFF</span>
                 {% endif %}
             </div>
             <div class="tax-note">Incl. of all taxes</div>
@@ -3949,9 +3949,12 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="related-grid">
             {% for p in related_products %}
           <a href="/product/{{ p.id }}" class="related-card">
-   <img src="{{ p.images[0].image_url if p.images and p.images[0] else '/static/images/default.png' }}" alt="{{ p.name }} - related product from Belt Purse Store">
+    <img src="{{ p.images[0].image_url if p.images and p.images[0] else '/static/images/default.png' }}" alt="{{ p.name }} - related product from Belt Purse Store">
     <div class="related-card-body">
         <h4>{{ p.name }}</h4>
+        {% if p.feature_line %}
+        <div class="product-feature-line">{{ p.feature_line }}</div>
+        {% endif %}
         <div class="price-row">
             <span class="new-price">₹{{ p.price }}</span>
         </div>

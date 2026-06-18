@@ -59,14 +59,15 @@
     <h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Belt Purse Store - Premium Leather Belts & Fashion Accessories</h1>
     <div class="hero-slider" id="heroSlider">
         {% set fallback_hero_slides = [
-            {'media_url': '/static/images/herosection1.png', 'mobile_media_url': none, 'alt_text': 'Textured formal belt', 'title': 'Textured Formal Belt', 'subtitle': 'Slightly glossy finish with crossing line texture', 'button_text': 'Explore Collection', 'button_link': '/products-page'},
-            {'media_url': '/static/images/herosection2.png', 'mobile_media_url': none, 'alt_text': 'Premium carbon fiber design belt', 'title': 'Carbon Fiber Design Belt', 'subtitle': 'Matt finish with a decent premium look', 'button_text': 'Shop Premium Belts', 'button_link': '/products-page'},
-            {'media_url': '/static/images/herosection3.png', 'mobile_media_url': none, 'alt_text': 'Glossy dot texture belt', 'title': 'Glossy Dot Texture Belt', 'subtitle': 'A refined formal belt with all-over dotted texture', 'button_text': 'Upgrade Your Style', 'button_link': '/products-page'}
+            {'media_url': '/static/images/herosection1.png', 'mobile_media_url': none, 'alt_text': 'Textured formal belt', 'title': 'Textured Formal Belt', 'subtitle': 'Slightly glossy finish with crossing line texture', 'button_text': 'Explore Collection', 'button_link': none},
+            {'media_url': '/static/images/herosection2.png', 'mobile_media_url': none, 'alt_text': 'Premium carbon fiber design belt', 'title': 'Carbon Fiber Design Belt', 'subtitle': 'Matt finish with a decent premium look', 'button_text': 'Shop Premium Belts', 'button_link': none},
+            {'media_url': '/static/images/herosection3.png', 'mobile_media_url': none, 'alt_text': 'Glossy dot texture belt', 'title': 'Glossy Dot Texture Belt', 'subtitle': 'A refined formal belt with all-over dotted texture', 'button_text': 'Upgrade Your Style', 'button_link': none}
         ] %}
         {% set active_hero_slides = hero_slides if hero_slides is defined else fallback_hero_slides %}
         {% for slide in active_hero_slides %}
         <div class="hero-slide {% if loop.first %}active{% endif %}">
-            <a href="/products-page" class="hero-slide-link" aria-label="Shop all products">
+            {% if slide.button_link %}
+            <a href="{{ slide.button_link }}" class="hero-slide-link" aria-label="Open hero slide link">
                 <picture>
                     {% if slide.mobile_media_url %}
                     <source media="(max-width: 768px)" srcset="{{ slide.mobile_media_url }}">
@@ -74,6 +75,16 @@
                     <img src="{{ slide.media_url }}" alt="{{ slide.alt_text or slide.title or 'Belt Purse hero image' }}" class="hero-bg-img">
                 </picture>
             </a>
+            {% else %}
+            <div class="hero-slide-link" aria-hidden="true">
+                <picture>
+                    {% if slide.mobile_media_url %}
+                    <source media="(max-width: 768px)" srcset="{{ slide.mobile_media_url }}">
+                    {% endif %}
+                    <img src="{{ slide.media_url }}" alt="{{ slide.alt_text or slide.title or 'Belt Purse hero image' }}" class="hero-bg-img">
+                </picture>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
 
@@ -372,6 +383,16 @@ function mergeProductVariants(data) {
     }, new Map()).values());
 }
 
+function escapeHtml(value) {
+    return String(value || "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[char]));
+}
+
 function renderProductSet(container, products, emptyMessage) {
     if (!products.length) {
         container.innerHTML = `<div class="collection-empty">${emptyMessage}</div>`;
@@ -386,7 +407,10 @@ function renderProductSet(container, products, emptyMessage) {
             .filter(color => color?.id && color?.code);
 
         const ratingHTML = product.rating ? `<div class="rating">★ ${product.rating}</div>` : "";
-        const discountHTML = product.discount_percent > 0 ? `<span class="discount-badge">-${product.discount_percent}%</span>` : "";
+        const featureLineHTML = product.feature_line
+            ? `<div class="product-feature-line">${escapeHtml(product.feature_line)}</div>`
+            : "";
+        const discountHTML = product.discount_percent > 0 ? `<span class="discount-badge">-${product.discount_percent}% OFF</span>` : "";
         const oldPriceHTML = product.original_price ? `<span class="old-price">₹${product.original_price}</span>` : "";
         const colorsHTML = colorList.length
             ? `<div class="color-options">${colorList.map((color, index) => `
@@ -411,6 +435,7 @@ function renderProductSet(container, products, emptyMessage) {
                 ${colorsHTML}
                 <h4>${product.name}</h4>
                 ${ratingHTML}
+                ${featureLineHTML}
                 <div class="price-box">
                     <span class="new-price">₹${product.price}</span>
                     ${oldPriceHTML}

@@ -160,6 +160,7 @@ def ensure_live_db_columns():
     ensure_column_exists("products", "product_type", "product_type VARCHAR(50) DEFAULT 'belt'")
     ensure_column_exists("products", "requires_size", "requires_size BOOLEAN DEFAULT TRUE")
     ensure_column_exists("products", "size_type", "size_type VARCHAR(30) DEFAULT 'specific'")
+    ensure_column_exists("products", "feature_line", "feature_line VARCHAR(100)")
     ensure_column_exists("products", "composition_care", "composition_care TEXT")
     ensure_column_exists("products", "additional_details", "additional_details TEXT")
     ensure_column_exists("products", "show_on_homepage", "show_on_homepage BOOLEAN DEFAULT FALSE")
@@ -2420,34 +2421,70 @@ def parse_int(value, default=0):
 
 
 def homepage_product_limit(product_type):
-    product_type = normalize_product_type(product_type)
-    if product_type == "wallet":
-        return int(app.config.get("INDEX_WALLETS_LIMIT", 5))
-    return int(app.config.get("INDEX_BELTS_LIMIT", 3))
+    return 12
 
 
 def homepage_limit_message(product_type):
     product_type = normalize_product_type(product_type)
     label = "wallets" if product_type == "wallet" else "belts"
-    limit = homepage_product_limit(product_type)
-    return f"Homepage {label} limit is {limit}. Please remove another {label[:-1]} first."
+    return f"You can select maximum 12 {label} for homepage."
+
+
+def homepage_label(product_type):
+    return "Wallets" if normalize_product_type(product_type) == "wallet" else "Belts"
+
+
+def active_product_filter():
+    return db.or_(
+        Product.is_archived == False,
+        Product.is_archived.is_(None)
+    )
 
 
 def homepage_selection_count(product_type, exclude_product_id=None):
     query = Product.query.filter(
         Product.product_type == normalize_product_type(product_type),
-        Product.show_on_homepage == True
+        Product.show_on_homepage == True,
+        active_product_filter()
     )
     if exclude_product_id:
         query = query.filter(Product.id != exclude_product_id)
     return query.count()
 
 
-def validate_homepage_selection(product_type, show_on_homepage, product_id=None):
+def homepage_position_in_use(product_type, position, exclude_product_id=None):
+    query = Product.query.filter(
+        Product.product_type == normalize_product_type(product_type),
+        Product.show_on_homepage == True,
+        Product.homepage_sort_order == position,
+        active_product_filter()
+    )
+    if exclude_product_id:
+        query = query.filter(Product.id != exclude_product_id)
+    return query.first() is not None
+
+
+def homepage_layout_warning(product_type, selected_count):
+    if selected_count in (6, 12):
+        return None
+    if selected_count == 3:
+        return "3 products desktop ke liye valid hai but mobile layout uneven ho sakta hai."
+    if selected_count == 4:
+        return "4 products mobile ke liye valid hai but desktop layout uneven ho sakta hai."
+    return "For clean desktop and mobile layout, please select 6 or 12 products."
+
+
+def validate_homepage_selection(product_type, show_on_homepage, homepage_position=0, product_id=None, product=None):
     if not show_on_homepage:
         return None
+    if product is not None and bool(getattr(product, "is_archived", False)):
+        return "Inactive products cannot be selected for homepage."
+    if homepage_position < 1 or homepage_position > 12:
+        return "Position must be between 1 and 12."
     if homepage_selection_count(product_type, product_id) >= homepage_product_limit(product_type):
         return homepage_limit_message(product_type)
+    if homepage_position_in_use(product_type, homepage_position, product_id):
+        return f"This position is already used in {homepage_label(product_type)} section."
     return None
 
 
@@ -2559,7 +2596,7 @@ def toggle_product_homepage(id):
     show_on_homepage = request.form.get("show_on_homepage") == "true"
     sort_order = parse_int(request.form.get("homepage_sort_order"), product.homepage_sort_order or 0)
 
-    error = validate_homepage_selection(product_type, show_on_homepage, product.id)
+    error = validate_homepage_selection(product_type, show_on_homepage, sort_order, product.id, product)
     if error:
         return jsonify({
             "success": False,
@@ -2578,6 +2615,7 @@ def toggle_product_homepage(id):
         "homepage_sort_order": product.homepage_sort_order or 0,
         "homepage_selected_count": homepage_selection_count(product_type),
         "homepage_limit": homepage_product_limit(product_type),
+        "layout_warning": homepage_layout_warning(product_type, homepage_selection_count(product_type)),
     })
 
 
@@ -2662,7 +2700,7 @@ def add_product():
                 errors["sizes"] = sizes_error
         show_on_homepage = bool(request.form.get("show_on_homepage"))
         homepage_sort_order = parse_int(request.form.get("homepage_sort_order"), 0)
-        homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage)
+        homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage, homepage_sort_order)
         if homepage_error:
             errors["homepage"] = homepage_error
         media_error = validate_product_media_uploads()
@@ -2684,6 +2722,7 @@ def add_product():
             )
 
         guarantee = request.form.get("guarantee")
+        feature_line = (request.form.get("feature_line") or "").strip()[:100] or None
         material = request.form.get("material")
         description = request.form.get("description")
         composition_care = request.form.get("composition_care")
@@ -2708,6 +2747,7 @@ def add_product():
             size_unit=size_unit,
             offer=f"{discount_percent}% OFF" if discount_percent > 0 else None,
             guarantee=guarantee,
+            feature_line=feature_line,
             material=material,
             description=description,
             composition_care=composition_care,
@@ -2896,7 +2936,7 @@ def edit_product(id):
                 errors["sizes"] = sizes_error
         show_on_homepage = bool(request.form.get("show_on_homepage"))
         homepage_sort_order = parse_int(request.form.get("homepage_sort_order"), product.homepage_sort_order or 0)
-        homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage, product.id)
+        homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage, homepage_sort_order, product.id, product)
         if homepage_error:
             errors["homepage"] = homepage_error
         media_error = validate_product_media_uploads()
@@ -2922,6 +2962,7 @@ def edit_product(id):
         product.requires_size = requires_size
         product.size_type = size_type
         product.guarantee = request.form.get("guarantee")
+        product.feature_line = (request.form.get("feature_line") or "").strip()[:100] or None
         product.material = request.form.get("material")
         product.description = request.form.get("description")
         product.composition_care = request.form.get("composition_care")
@@ -3202,6 +3243,7 @@ def archive_product(id):
 
     product = Product.query.get_or_404(id)
     product.is_archived = True
+    product.show_on_homepage = False
     db.session.commit()
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -3209,6 +3251,9 @@ def archive_product(id):
             "success": True,
             "product_id": id,
             "is_archived": True,
+            "show_on_homepage": False,
+            "homepage_selected_count": homepage_selection_count(product.product_type),
+            "layout_warning": homepage_layout_warning(product.product_type, homepage_selection_count(product.product_type)),
             "message": "Product archived successfully"
         })
 
@@ -3766,6 +3811,64 @@ FALLBACK_AUTO_SLIDER_ALT_TEXT = {
 }
 
 
+HOMEPAGE_MEDIA_CATEGORIES = {
+    "hero_image": {
+        "title": "Hero Slider Images",
+        "description": "Manage desktop/mobile hero slides and click destinations.",
+    },
+    "style_video": {
+        "title": "Crafted for Everyday Style Videos",
+        "description": "Manage videos shown in the crafted style section.",
+    },
+    "auto_slider_image": {
+        "title": "Auto Image Slider Images",
+        "description": "Manage product images in the auto sliding carousel.",
+    },
+    "all_products_banner": {
+        "title": "All Products Banner",
+        "description": "Manage the desktop/mobile banner shown on the all products page.",
+    },
+    "belt_page_banner": {
+        "title": "Belt Page Banner",
+        "description": "Manage the desktop/mobile banner shown on the belts page.",
+    },
+    "wallet_page_banner": {
+        "title": "Wallet Page Banner",
+        "description": "Manage the desktop/mobile banner shown on the wallets page.",
+    },
+}
+
+HERO_LINK_TARGETS = {
+    "none": None,
+    "all_products": "/products-page",
+    "belts": "/products-page?category=belt",
+    "wallets": "/products-page?category=wallet",
+}
+
+
+def admin_homepage_media_url(media_type=None):
+    if media_type in HOMEPAGE_MEDIA_CATEGORIES:
+        return url_for("admin_homepage_media", category=media_type)
+    return url_for("admin_homepage_media")
+
+
+def hero_link_target_from_url(url):
+    clean_url = (url or "").strip()
+    if not clean_url:
+        return "none"
+    for target, target_url in HERO_LINK_TARGETS.items():
+        if target_url and clean_url == target_url:
+            return target
+    return "custom"
+
+
+def resolve_hero_button_link():
+    target = (request.form.get("hero_link_target") or "none").strip()
+    if target == "custom":
+        return (request.form.get("custom_button_link") or "").strip() or None
+    return HERO_LINK_TARGETS.get(target)
+
+
 def homepage_media_config(media_type):
     configs = {
         "hero_image": {
@@ -3785,6 +3888,24 @@ def homepage_media_config(media_type):
             "minimum_extra_position": 7,
             "label": "Auto slider image",
             "extra_label": "auto slider image",
+        },
+        "all_products_banner": {
+            "fallback_map": {1: "/static/images/beltbackground2.jpg"},
+            "minimum_extra_position": 1,
+            "label": "All products banner",
+            "extra_label": "all products banner",
+        },
+        "belt_page_banner": {
+            "fallback_map": {1: "/static/images/beltbackground.jpg"},
+            "minimum_extra_position": 1,
+            "label": "Belt page banner",
+            "extra_label": "belt page banner",
+        },
+        "wallet_page_banner": {
+            "fallback_map": {1: "/static/images/wallet1.jpeg"},
+            "minimum_extra_position": 1,
+            "label": "Wallet page banner",
+            "extra_label": "wallet page banner",
         },
     }
     return configs.get(media_type)
@@ -3817,6 +3938,8 @@ def homepage_media_cards(media_type, fallback_map):
             "media": media,
             "preview_url": media.media_url if media and media.media_url else fallback_url,
             "mobile_preview_url": media.mobile_media_url if media and media.mobile_media_url else None,
+            "button_link": media.button_link if media and media.button_link else None,
+            "hero_link_target": hero_link_target_from_url(media.button_link if media else None),
             "is_fallback": uses_fallback,
             "is_active": True if media is None else bool(media.is_active),
             "has_fallback": fallback_url is not None,
@@ -3874,17 +3997,41 @@ def build_homepage_slides(media_type, fallback_map, include_fallback=True, fallb
     return slides
 
 
+def build_collection_banners(media_type, fallback_alt_text):
+    config = homepage_media_config(media_type)
+    if not config:
+        return []
+    return build_homepage_slides(
+        media_type,
+        config["fallback_map"],
+        include_fallback=True,
+        fallback_alt_text={1: fallback_alt_text},
+    )
+
+
 @app.route('/admin/homepage-media')
 @admin_required
 def admin_homepage_media():
+    selected_category = (request.args.get("category") or "").strip()
+    if selected_category and selected_category not in HOMEPAGE_MEDIA_CATEGORIES:
+        abort(404)
+
     hero_cards = homepage_media_cards("hero_image", FALLBACK_HERO_SLIDES)
     video_cards = homepage_media_cards("style_video", FALLBACK_STYLE_VIDEOS)
     auto_slider_cards = homepage_media_cards("auto_slider_image", FALLBACK_AUTO_SLIDER_IMAGES)
+    all_products_banner_cards = homepage_media_cards("all_products_banner", homepage_media_config("all_products_banner")["fallback_map"])
+    belt_banner_cards = homepage_media_cards("belt_page_banner", homepage_media_config("belt_page_banner")["fallback_map"])
+    wallet_banner_cards = homepage_media_cards("wallet_page_banner", homepage_media_config("wallet_page_banner")["fallback_map"])
     return render_template(
         "admin/homepage_media.html",
+        categories=HOMEPAGE_MEDIA_CATEGORIES,
+        selected_category=selected_category,
         hero_cards=hero_cards,
         video_cards=video_cards,
         auto_slider_cards=auto_slider_cards,
+        all_products_banner_cards=all_products_banner_cards,
+        belt_banner_cards=belt_banner_cards,
+        wallet_banner_cards=wallet_banner_cards,
         auto_slider_fallback_alt_text=FALLBACK_AUTO_SLIDER_ALT_TEXT,
     )
 
@@ -3906,7 +4053,7 @@ def admin_update_homepage_media_position(media_type, position):
         if not media_file or not media_file.filename:
             if not fallback_url:
                 flash("Please choose a file to replace this position.", "error")
-                return redirect(url_for("admin_homepage_media"))
+                return redirect(admin_homepage_media_url(media_type))
             media = HomepageMedia(media_type=media_type, sort_order=position, media_url=fallback_url)
         else:
             media = HomepageMedia(media_type=media_type, sort_order=position)
@@ -3916,17 +4063,17 @@ def admin_update_homepage_media_position(media_type, position):
         media_url, public_id = save_homepage_media_file(media_file, media_type)
         if not media_url:
             flash("Please upload a valid image/video file.", "error")
-            return redirect(url_for("admin_homepage_media"))
+            return redirect(admin_homepage_media_url(media_type))
         media.media_url = media_url
         media.public_id = public_id
 
-    if media_type == "hero_image":
+    if media_type in ("hero_image", "all_products_banner", "belt_page_banner", "wallet_page_banner"):
         mobile_file = request.files.get("mobile_media_file")
         if mobile_file and mobile_file.filename:
             mobile_url, mobile_public_id = save_homepage_media_file(mobile_file, media_type)
             if not mobile_url:
                 flash("Please upload a valid mobile image file.", "error")
-                return redirect(url_for("admin_homepage_media"))
+                return redirect(admin_homepage_media_url(media_type))
             media.mobile_media_url = mobile_url
             media.mobile_public_id = mobile_public_id
 
@@ -3935,15 +4082,15 @@ def admin_update_homepage_media_position(media_type, position):
     media.title = None
     media.subtitle = None
     media.button_text = None
-    media.button_link = None
-    media.alt_text = (request.form.get("alt_text") or "").strip() or None if media_type == "auto_slider_image" else None
+    media.button_link = resolve_hero_button_link() if media_type == "hero_image" else None
+    media.alt_text = (request.form.get("alt_text") or "").strip() or None if media_type in ("auto_slider_image", "all_products_banner", "belt_page_banner", "wallet_page_banner") else None
     media.is_active = is_active
     media.updated_at = datetime.utcnow()
     db.session.flush()
     deactivate_duplicate_homepage_positions(media)
     db.session.commit()
     flash(f"{config['label']} position {position} updated.", "success")
-    return redirect(url_for("admin_homepage_media"))
+    return redirect(admin_homepage_media_url(media_type))
 
 
 @app.route('/admin/homepage-media/add-extra/<media_type>', methods=['POST'])
@@ -3962,35 +4109,36 @@ def admin_add_extra_homepage_media(media_type):
 
     if find_homepage_media_position(media_type, position):
         flash(f"Position {position} already exists. Change that position instead.", "error")
-        return redirect(url_for("admin_homepage_media"))
+        return redirect(admin_homepage_media_url(media_type))
 
     media_file = request.files.get("media_file")
     media_url, public_id = save_homepage_media_file(media_file, media_type)
     if not media_url:
         flash("Please upload a valid image/video file.", "error")
-        return redirect(url_for("admin_homepage_media"))
+        return redirect(admin_homepage_media_url(media_type))
 
     media = HomepageMedia(
         media_type=media_type,
         media_url=media_url,
         public_id=public_id,
-        alt_text=(request.form.get("alt_text") or "").strip() or None if media_type == "auto_slider_image" else None,
+        alt_text=(request.form.get("alt_text") or "").strip() or None if media_type in ("auto_slider_image", "all_products_banner", "belt_page_banner", "wallet_page_banner") else None,
+        button_link=resolve_hero_button_link() if media_type == "hero_image" else None,
         sort_order=position,
         is_active=bool(request.form.get("is_active")),
     )
-    if media_type == "hero_image":
+    if media_type in ("hero_image", "all_products_banner", "belt_page_banner", "wallet_page_banner"):
         mobile_file = request.files.get("mobile_media_file")
         if mobile_file and mobile_file.filename:
             mobile_url, mobile_public_id = save_homepage_media_file(mobile_file, media_type)
             if not mobile_url:
                 flash("Please upload a valid mobile image file.", "error")
-                return redirect(url_for("admin_homepage_media"))
+                return redirect(admin_homepage_media_url(media_type))
             media.mobile_media_url = mobile_url
             media.mobile_public_id = mobile_public_id
     db.session.add(media)
     db.session.commit()
     flash(f"Extra {config['extra_label']} added at position {position}.", "success")
-    return redirect(url_for("admin_homepage_media"))
+    return redirect(admin_homepage_media_url(media_type))
 
 
 @app.route('/admin/homepage-media/move/<int:media_id>', methods=['POST'])
@@ -4004,35 +4152,36 @@ def admin_move_homepage_media(media_id):
         new_position = int(request.form.get("position") or media.sort_order or 0)
     except ValueError:
         flash("Please enter a valid position.", "error")
-        return redirect(url_for("admin_homepage_media"))
+        return redirect(admin_homepage_media_url(media.media_type))
 
     minimum_position = config["minimum_extra_position"]
     if new_position < minimum_position:
         flash(f"Extra media position must be {minimum_position} or higher.", "error")
-        return redirect(url_for("admin_homepage_media"))
+        return redirect(admin_homepage_media_url(media.media_type))
 
     existing = find_homepage_media_position(media.media_type, new_position)
     if existing and existing.id != media.id:
         flash(f"Position {new_position} already exists. Update that position instead.", "error")
-        return redirect(url_for("admin_homepage_media"))
+        return redirect(admin_homepage_media_url(media.media_type))
 
     media.sort_order = new_position
     media.updated_at = datetime.utcnow()
     db.session.commit()
     flash("Position updated successfully.", "success")
-    return redirect(url_for("admin_homepage_media"))
+    return redirect(admin_homepage_media_url(media.media_type))
 
 
 @app.route('/admin/homepage-media/add/<media_type>', methods=['GET', 'POST'])
 @admin_required
 def admin_add_homepage_media(media_type):
-    return redirect(url_for("admin_homepage_media"))
+    return redirect(admin_homepage_media_url(media_type))
 
 
 @app.route('/admin/homepage-media/edit/<int:media_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_homepage_media(media_id):
-    return redirect(url_for("admin_homepage_media"))
+    media = HomepageMedia.query.get_or_404(media_id)
+    return redirect(admin_homepage_media_url(media.media_type))
 
 
 @app.route('/admin/homepage-media/toggle/<int:media_id>')
@@ -4042,17 +4191,18 @@ def admin_toggle_homepage_media(media_id):
     media.is_active = not media.is_active
     media.updated_at = datetime.utcnow()
     db.session.commit()
-    return redirect(url_for("admin_homepage_media"))
+    return redirect(admin_homepage_media_url(media.media_type))
 
 
 @app.route('/admin/homepage-media/delete/<int:media_id>')
 @admin_required
 def admin_delete_homepage_media(media_id):
     media = HomepageMedia.query.get_or_404(media_id)
+    media_type = media.media_type
     db.session.delete(media)
     db.session.commit()
     flash("Homepage media deleted successfully.", "success")
-    return redirect(url_for("admin_homepage_media"))
+    return redirect(admin_homepage_media_url(media_type))
 
 @app.route('/admin/orders/<int:id>')
 @admin_required
@@ -4284,9 +4434,9 @@ def home():
         hero_slides=hero_slides,
         style_videos=style_videos,
         auto_slider_images=auto_slider_images,
-        index_belts_limit=int(app.config.get("INDEX_BELTS_LIMIT", 3)),
-        index_wallets_limit=int(app.config.get("INDEX_WALLETS_LIMIT", 5)),
-        index_mobile_products_limit=int(app.config.get("INDEX_MOBILE_PRODUCTS_LIMIT", 4)),
+        index_belts_limit=homepage_product_limit("belt"),
+        index_wallets_limit=homepage_product_limit("wallet"),
+        index_mobile_products_limit=homepage_product_limit("belt"),
     )
 
 
@@ -4495,17 +4645,13 @@ from flask import jsonify
 
 @app.route('/products')
 def products():
-    active_filter = db.or_(
-        Product.is_archived == False,
-        Product.is_archived.is_(None)
-    )
+    active_filter = active_product_filter()
 
     if request.args.get("homepage") == "1":
         all_products = []
-        mobile_limit = int(app.config.get("INDEX_MOBILE_PRODUCTS_LIMIT", 4))
         type_limits = {
-            "belt": max(int(app.config.get("INDEX_BELTS_LIMIT", 3)), mobile_limit),
-            "wallet": max(int(app.config.get("INDEX_WALLETS_LIMIT", 5)), mobile_limit),
+            "belt": homepage_product_limit("belt"),
+            "wallet": homepage_product_limit("wallet"),
         }
 
         for product_type, limit in type_limits.items():
@@ -4517,12 +4663,6 @@ def products():
                 Product.homepage_sort_order.asc(),
                 Product.id.desc()
             ).limit(limit).all()
-
-            if not selected:
-                selected = Product.query.filter(
-                    active_filter,
-                    Product.product_type == product_type
-                ).order_by(Product.id.desc()).limit(limit).all()
 
             all_products.extend(selected)
     else:
@@ -4577,6 +4717,7 @@ def products():
                 "original_price": p.original_price,
                 "discount_percent": p.discount_percent or 0,
                 "rating": p.rating or 0,
+                "feature_line": p.feature_line or "",
                 "product_type": p.product_type or "belt",
                 "show_on_homepage": bool(p.show_on_homepage),
                 "homepage_sort_order": p.homepage_sort_order or 0,
@@ -4616,6 +4757,7 @@ def products():
                 "original_price": p.original_price,
                 "discount_percent": p.discount_percent or 0,
                 "rating": p.rating or 0,
+                "feature_line": p.feature_line or "",
                 "product_type": p.product_type or "belt",
                 "show_on_homepage": bool(p.show_on_homepage),
                 "homepage_sort_order": p.homepage_sort_order or 0,
@@ -5030,6 +5172,7 @@ def product_detail(id):
 @app.route('/products-page')
 def products_page():
     color_id = request.args.get('color')
+    category = (request.args.get('category') or '').strip().lower()
 
     base_filter = db.or_(
         Product.is_archived == False,
@@ -5044,7 +5187,15 @@ def products_page():
     else:
         products = Product.query.filter(base_filter).all()
 
-    return render_template("products.html", products=products)
+    collection_banners = []
+    if category == "belt":
+        collection_banners = build_collection_banners("belt_page_banner", "Premium belt collection banner")
+    elif category == "wallet":
+        collection_banners = build_collection_banners("wallet_page_banner", "Premium wallet collection banner")
+    else:
+        collection_banners = build_collection_banners("all_products_banner", "All products collection banner")
+
+    return render_template("products.html", products=products, collection_banners=collection_banners)
 
 # ================= CONTEXT =================
 @app.context_processor

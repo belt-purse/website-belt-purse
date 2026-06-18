@@ -22,6 +22,15 @@
         <div>
             <strong>Homepage {{ plural_label or 'Products' }}</strong>
             <span id="homepageCount">{{ homepage_selected_count or 0 }}</span> / {{ homepage_limit }} selected
+            <p class="homepage-help">
+                Desktop allowed counts: 3, 6, 9, 12. Mobile allowed counts: 2, 4, 6, 8, 10, 12.
+                For clean desktop and mobile layout, select either 6 or 12 products. Maximum 12 {{ (plural_label or 'products')|lower }} allowed.
+            </p>
+            <p class="homepage-warning" id="homepageLayoutWarning">
+                {% if homepage_selected_count not in [0, 6, 12] %}
+                    For clean desktop and mobile layout, please select 6 or 12 products.
+                {% endif %}
+            </p>
         </div>
         <div class="homepage-filters">
             <a href="{{ list_url }}" class="{% if homepage_filter != 'homepage' %}active{% endif %}">All</a>
@@ -173,6 +182,7 @@
                         <input
                             type="checkbox"
                             {% if p.show_on_homepage %}checked{% endif %}
+                            {% if p.is_archived %}disabled{% endif %}
                             onchange="toggleHomepage({{ p.id }}, this)"
                         >
                         <span>Show on Homepage</span>
@@ -181,10 +191,17 @@
                         Order
                         <input
                             type="number"
+                            min="1"
+                            max="12"
+                            step="1"
                             value="{{ p.homepage_sort_order or 0 }}"
+                            {% if p.is_archived %}disabled{% endif %}
                             onchange="updateHomepageOrder({{ p.id }}, this)"
                         >
                     </label>
+                    {% if p.is_archived %}
+                    <small class="homepage-disabled-note">Unarchive this product before selecting it for homepage.</small>
+                    {% endif %}
                 </div>
 
                <div class="actions">
@@ -266,6 +283,23 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.homepage-help,
+.homepage-warning {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.homepage-help {
+    color: #4b5563;
+    max-width: 760px;
+}
+
+.homepage-warning {
+    color: #9a3412;
+    min-height: 18px;
 }
 
 .homepage-filters a {
@@ -675,6 +709,11 @@
     border-radius: 8px;
 }
 
+.homepage-disabled-note {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
 .archive-switch {
     position: relative;
     display: inline-block;
@@ -774,6 +813,12 @@ async function toggleArchive(productId, checkbox) {
 
         if (isActive) {
             if (badge) badge.remove();
+            const homepageCheckbox = card.querySelector(".homepage-list-switch input");
+            const homepageOrder = card.querySelector(".homepage-order-field input");
+            const disabledNote = card.querySelector(".homepage-disabled-note");
+            if (homepageCheckbox) homepageCheckbox.disabled = false;
+            if (homepageOrder) homepageOrder.disabled = false;
+            if (disabledNote) disabledNote.remove();
         } else {
             if (!badge && titleWrap) {
                 badge = document.createElement("span");
@@ -781,6 +826,23 @@ async function toggleArchive(productId, checkbox) {
                 badge.innerText = "Archived";
                 titleWrap.appendChild(badge);
             }
+        }
+
+        if (!isActive) {
+            const homepageCheckbox = card.querySelector(".homepage-list-switch input");
+            const homepageOrder = card.querySelector(".homepage-order-field input");
+            const homepageBadge = card.querySelector(".homepage-badge");
+            if (homepageCheckbox) {
+                homepageCheckbox.checked = false;
+                homepageCheckbox.defaultChecked = false;
+                homepageCheckbox.disabled = true;
+            }
+            if (homepageOrder) homepageOrder.disabled = true;
+            if (homepageBadge) homepageBadge.remove();
+            const count = document.getElementById("homepageCount");
+            if (count && data.homepage_selected_count !== undefined) count.innerText = data.homepage_selected_count;
+            const warning = document.getElementById("homepageLayoutWarning");
+            if (warning) warning.innerText = data.layout_warning || "";
         }
 
     } catch (error) {
@@ -815,6 +877,8 @@ async function saveHomepageState(productId, checkbox, orderInput) {
 
         const count = document.getElementById("homepageCount");
         if (count) count.innerText = data.homepage_selected_count;
+        const warning = document.getElementById("homepageLayoutWarning");
+        if (warning) warning.innerText = data.layout_warning || "";
         checkbox.defaultChecked = checkbox.checked;
         if (orderInput) orderInput.defaultValue = orderInput.value;
 

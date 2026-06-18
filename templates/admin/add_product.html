@@ -45,6 +45,11 @@
                     {% endif %}
                 </div>
 
+                <div class="form-group">
+                    <label>Feature Line</label>
+                    <input type="text" name="feature_line" value="{{ form_data.get('feature_line', '') }}" placeholder="Add a short product highlight" maxlength="80">
+                </div>
+
                 <div class="grid-2">
                    
 
@@ -102,6 +107,8 @@
                     </label>
                     <p class="hint-text">
                         Selected {{ homepage_selected_count or 0 }} of {{ homepage_limit }} {{ (plural_label or 'products')|lower }}.
+                        Position must be 1 to 12 and unique in this section.
+                        For clean desktop and mobile layout, select either 6 or 12 products.
                     </p>
                     {% if errors.get('homepage') %}
                     <small class="field-error-message">{{ errors.get('homepage') }}</small>
@@ -109,12 +116,15 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Homepage Sort Order</label>
+                    <label>Homepage Position</label>
                     <input
                         type="number"
                         name="homepage_sort_order"
+                        min="1"
+                        max="12"
+                        step="1"
                         value="{{ form_data.get('homepage_sort_order', '0') }}"
-                        placeholder="0"
+                        placeholder="1-12"
                     >
                 </div>
             </div>

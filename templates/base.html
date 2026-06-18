@@ -2225,7 +2225,9 @@ body {
     {% block extra_head %}{% endblock %}
 </head>
 
-<body class="{% if request.path == '/' %}home-page update-home-page{% else %}inner-page{% endif %}">
+{% set base_product_category = (request.args.get('category') or '')|lower %}
+{% set collection_hero_nav = request.path == '/products-page' %}
+<body class="{% if request.path == '/' %}home-page update-home-page transparent-navbar-page{% elif collection_hero_nav %}inner-page collection-hero-page transparent-navbar-page{% else %}inner-page{% endif %}">
 
 
 
@@ -2303,7 +2305,7 @@ body {
     </div>
 </div>
 
-<header class="navbar {% if request.path == '/' %}is-homepage{% else %}not-homepage{% endif %}" id="navbar">
+<header class="navbar {% if request.path == '/' or collection_hero_nav %}is-homepage{% else %}not-homepage{% endif %}" id="navbar">
 
     <!-- LEFT: LOGO -->
     <div class="nav-left">
@@ -2481,6 +2483,87 @@ h3,
 .hero-content h1,
 .product-title-row h1 {
     font-weight: 600 !important;
+}
+</style>
+
+<style>
+body.inner-page main,
+body.inner-page .main,
+body.inner-page .page-wrapper,
+body.inner-page .content-wrapper,
+body.inner-page .account,
+body.inner-page .products-page,
+body.inner-page .product-detail-page,
+body.inner-page .product-page,
+body.inner-page .blog-page,
+body.inner-page .blogs-container,
+body.inner-page .blog-detail-page,
+body.inner-page .about-page,
+body.inner-page .contact-page,
+body.inner-page .wishlist-page,
+body.inner-page .wishlist-container,
+body.inner-page .cart-page,
+body.inner-page .cart-container,
+body.inner-page .cart-page-container,
+body.inner-page .checkout-page,
+body.inner-page .login-page,
+body.inner-page .register-page,
+body.inner-page .policy-page,
+body.inner-page .orders-page,
+body.inner-page .warranty-page,
+body.inner-page .issue-page {
+    padding-top: 28px !important;
+}
+
+body.inner-page .page-heading,
+body.inner-page .page-header,
+body.inner-page .page-hero,
+body.inner-page .products-header,
+body.inner-page .product-hero,
+body.inner-page .blog-header,
+body.inner-page .blogs-header,
+body.inner-page .policy-hero,
+body.inner-page .about-hero,
+body.inner-page .about-header,
+body.inner-page .contact-header,
+body.inner-page .wishlist-header,
+body.inner-page .wishlist-top,
+body.inner-page .cart-header,
+body.inner-page .products-title,
+body.inner-page .section-header,
+body.inner-page .section-title {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+@media (max-width: 768px) {
+    body.inner-page main,
+    body.inner-page .main,
+    body.inner-page .page-wrapper,
+    body.inner-page .content-wrapper,
+    body.inner-page .account,
+    body.inner-page .products-page,
+    body.inner-page .product-detail-page,
+    body.inner-page .product-page,
+    body.inner-page .blog-page,
+    body.inner-page .blogs-container,
+    body.inner-page .blog-detail-page,
+    body.inner-page .about-page,
+    body.inner-page .contact-page,
+    body.inner-page .wishlist-page,
+    body.inner-page .wishlist-container,
+    body.inner-page .cart-page,
+    body.inner-page .cart-container,
+    body.inner-page .cart-page-container,
+    body.inner-page .checkout-page,
+    body.inner-page .login-page,
+    body.inner-page .register-page,
+    body.inner-page .policy-page,
+    body.inner-page .orders-page,
+    body.inner-page .warranty-page,
+    body.inner-page .issue-page {
+        padding-top: 20px !important;
+    }
 }
 </style>
 
@@ -2757,11 +2840,10 @@ button,
     // Close menu when a link is clicked
     document.addEventListener('DOMContentLoaded', () => {
         const navbar = document.getElementById('navbar');
-        const heroSlider = document.getElementById('heroSlider');
-        const isHomepage = heroSlider !== null;
+        const isTransparentNavbarPage = document.body.classList.contains('transparent-navbar-page');
 
         // Add appropriate class based on page type
-        if (isHomepage) {
+        if (isTransparentNavbarPage) {
             navbar.classList.remove('not-homepage');
             document.body.classList.remove('has-fixed-navbar');
             navbar.classList.add('is-homepage');
@@ -2788,6 +2870,22 @@ button,
 
 
 let lastNavbarScrollY = window.scrollY;
+
+if (document.body.classList.contains("collection-hero-page")) {
+    if ("scrollRestoration" in history) {
+        history.scrollRestoration = "manual";
+    }
+    window.addEventListener("DOMContentLoaded", () => {
+        if (!window.location.hash) {
+            window.scrollTo(0, 0);
+        }
+        const navbar = document.querySelector(".navbar");
+        if (navbar && window.scrollY <= 50) {
+            navbar.classList.remove("scrolled", "desktop-nav-hidden", "mobile-nav-hidden");
+            navbar.classList.add("desktop-nav-visible", "mobile-nav-visible");
+        }
+    });
+}
 
 window.addEventListener("scroll", function () {
     const navbar = document.querySelector(".navbar");
@@ -3113,6 +3211,103 @@ section {
     color: #ffffff !important;
 }
 
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    z-index: 9999 !important;
+}
+
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) a,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .nav-link,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .navbar-brand,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) i,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) svg,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .hamburger,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .menu-icon,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .user-profile-link,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .premium-avatar,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .hamburger span {
+    color: #111111 !important;
+    fill: #111111 !important;
+    stroke: #111111 !important;
+}
+
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .hamburger span {
+    background: #111111 !important;
+}
+
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .badge,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .cart-count,
+body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .wishlist-count {
+    color: #ffffff !important;
+}
+
+@media (max-width: 768px) {
+    body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) .nav-center.show a {
+        color: #e6f7f1 !important;
+    }
+}
+
+@media (max-width: 768px) {
+    body.transparent-navbar-page .navbar.is-homepage:not(.scrolled) {
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+}
+
+body.collection-hero-page .products-page {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+}
+
+body.collection-hero-page .collection-banner {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+}
+
+body.collection-hero-page .products-header,
+body.collection-hero-page .seo-breadcrumb,
+body.collection-hero-page .products-toolbar {
+    display: none !important;
+}
+
+body.home-page .hero-section h1,
+body.home-page .hero-section h2,
+body.home-page .hero-section .hero-title,
+body.home-page .hero h1,
+body.home-page .hero h2,
+body.home-page .hero .hero-title,
+body.home-page .update-hero .hero-content,
+body.home-page .update-hero .hero-content h1,
+body.home-page .update-hero .hero-content h2 {
+    color: #111111 !important;
+}
+
+body.home-page .hero-section p,
+body.home-page .hero-section .hero-subtitle,
+body.home-page .hero-section .hero-label,
+body.home-page .hero .hero-subtitle,
+body.home-page .hero .hero-label,
+body.home-page .update-hero .hero-tagline,
+body.home-page .update-hero .hero-content p {
+    color: #1f1f1f !important;
+}
+
 .product-card,
 .prd-card,
 .blog-card,
@@ -3157,6 +3352,70 @@ img:not(.avatar):not(.avatar-img):not(.premium-avatar) {
 .badge,
 .discount-badge {
     border-radius: 999px !important;
+}
+
+.discount-badge,
+.sale-badge,
+.product-discount {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    padding: 3px 7px !important;
+    border-radius: 12px !important;
+    line-height: 1 !important;
+    letter-spacing: 0.2px !important;
+}
+
+.product-detail-page .product-offers-box,
+.product-detail-page .product-offers,
+.product-detail-page .coupon-offers {
+    width: auto !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    margin: 0 0 16px !important;
+}
+
+.product-detail-page .product-offer-row,
+.product-detail-page .product-offer-box,
+.product-detail-page .coupon-box,
+.product-detail-page .offer-card {
+    display: inline-flex !important;
+    align-items: center !important;
+    width: fit-content !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    padding: 8px 14px !important;
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0 !important;
+}
+
+.product-detail-page .product-offer-row span,
+.product-detail-page .product-offer-box span,
+.product-detail-page .coupon-box span,
+.product-detail-page .offer-card span {
+    line-height: 1.2 !important;
+}
+
+.product-detail-page .color-list {
+    gap: 10px !important;
+}
+
+.product-detail-page .color-dot,
+.product-detail-page .color-circle {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    border-width: 2px !important;
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px rgba(10, 92, 86, 0.16) !important;
+}
+
+.product-detail-page .color-dot.active,
+.product-detail-page .color-circle.active {
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #0A5C56 !important;
 }
 
 /* ===== REMOVE ALL VISUAL HOVER EFFECTS ===== */
@@ -3295,6 +3554,19 @@ a:hover,
     opacity: inherit !important;
     transform: none !important;
     transition: none !important;
+}
+
+.product-feature-line {
+    display: block !important;
+    max-width: 100% !important;
+    margin: 4px 0 6px !important;
+    color: #5f6f68 !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    line-height: 1.3 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 @media (min-width: 992px) {

@@ -524,6 +524,16 @@ function getProductDetailUrl(p) {
     return cid ? `/product/${pid}?color=${cid}` : `/product/${pid}`;
 }
 
+function escapeHtml(value) {
+    return String(value || "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[char]));
+}
+
 // ================= HOMEPAGE PRODUCTS =================
 function loadProducts() {
     fetch("/products")
@@ -579,7 +589,10 @@ function loadProducts() {
                     .filter(color => color?.id && color?.code);
 
                 const ratingHTML   = product.rating ? `<div class="rating">⭐ ${product.rating}</div>` : "";
-                const discountHTML = product.discount_percent > 0 ? `<span class="discount-badge">-${product.discount_percent}%</span>` : "";
+                const featureLineHTML = product.feature_line
+                    ? `<div class="product-feature-line">${escapeHtml(product.feature_line)}</div>`
+                    : "";
+                const discountHTML = product.discount_percent > 0 ? `<span class="discount-badge">-${product.discount_percent}% OFF</span>` : "";
                 const oldPriceHTML = product.original_price ? `<span class="old-price">₹${product.original_price}</span>` : "";
                 const colorsHTML   = colorList.length
                     ? `<div class="color-options">${colorList.map((color, index) => `
@@ -604,6 +617,7 @@ function loadProducts() {
                         ${colorsHTML}
                         <h4>${product.name}</h4>
                         ${ratingHTML}
+                        ${featureLineHTML}
                         <div class="price-box">
                             <span class="new-price">₹${product.price}</span>
                             ${oldPriceHTML}
