@@ -307,15 +307,38 @@ document.addEventListener("DOMContentLoaded", function () {
     updateCarousel();
 });
 
-const INDEX_BELTS_LIMIT = {{ index_belts_limit or 3 }};
-const INDEX_WALLETS_LIMIT = {{ index_wallets_limit or 5 }};
+const INDEX_DESKTOP_PRODUCTS_LIMIT = {{ index_desktop_products_limit or 12 }};
 const INDEX_MOBILE_PRODUCTS_LIMIT = {{ index_mobile_products_limit or 4 }};
 
-function getIndexLimit(type) {
-    if (window.matchMedia("(max-width: 768px)").matches) {
-        return INDEX_MOBILE_PRODUCTS_LIMIT;
-    }
-    return type === "wallet" ? INDEX_WALLETS_LIMIT : INDEX_BELTS_LIMIT;
+function getHomepageDevice() {
+    return window.matchMedia("(max-width: 768px)").matches ? "mobile" : "desktop";
+}
+
+function getIndexLimit() {
+    return getHomepageDevice() === "mobile" ? INDEX_MOBILE_PRODUCTS_LIMIT : INDEX_DESKTOP_PRODUCTS_LIMIT;
+}
+
+function isSelectedForHomepageDevice(product) {
+    return getHomepageDevice() === "mobile"
+        ? product.show_on_homepage_mobile === true
+        : product.show_on_homepage_desktop === true;
+}
+
+function getHomepagePosition(product) {
+    return getHomepageDevice() === "mobile"
+        ? Number(product.homepage_mobile_position || 0)
+        : Number(product.homepage_desktop_position || 0);
+}
+
+function sortHomepageProducts(products) {
+    return products
+        .filter(isSelectedForHomepageDevice)
+        .sort((left, right) => {
+            const leftPosition = getHomepagePosition(left) || 999;
+            const rightPosition = getHomepagePosition(right) || 999;
+            if (leftPosition !== rightPosition) return leftPosition - rightPosition;
+            return Number(right.product_id || right.id || 0) - Number(left.product_id || left.id || 0);
+        });
 }
 
 window.loadProducts = function () {
@@ -330,14 +353,23 @@ window.loadProducts = function () {
             walletContainer.innerHTML = "";
 
             const products = mergeProductVariants(data || []);
-            const belts = products.filter(product => normalizeType(product) === "belt");
-            const wallets = products.filter(product => normalizeType(product) === "wallet");
+            const belts = sortHomepageProducts(products.filter(product => normalizeType(product) === "belt"));
+            const wallets = sortHomepageProducts(products.filter(product => normalizeType(product) === "wallet"));
+            const limit = getIndexLimit();
 
-            renderProductSet(beltContainer, belts.slice(0, getIndexLimit("belt")), "Belt products are being updated.");
-            renderProductSet(walletContainer, wallets.slice(0, getIndexLimit("wallet")), "Premium wallets are coming soon");
+            renderProductSet(beltContainer, belts.slice(0, limit), "Belt products are being updated.");
+            renderProductSet(walletContainer, wallets.slice(0, limit), "Premium wallets are coming soon");
         })
         .catch(error => console.error("Product load error:", error));
 };
+
+let homepageProductReloadTimer;
+window.addEventListener("resize", () => {
+    clearTimeout(homepageProductReloadTimer);
+    homepageProductReloadTimer = setTimeout(() => {
+        if (typeof window.loadProducts === "function") window.loadProducts();
+    }, 180);
+});
 
 function normalizeType(product) {
     const value = String(product.product_type || product.category || product.name || "").trim().toLowerCase();

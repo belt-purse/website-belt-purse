@@ -140,11 +140,12 @@ def ensure_column_exists(table_name, column_name, column_sql, fallback_column_sq
     existing_columns = [col["name"] for col in inspector.get_columns(table_name)]
     if column_name in existing_columns:
         print(f"SAFE DB MIGRATION: {table_name}.{column_name} already exists")
-        return
+        return False
 
     with db.engine.begin() as conn:
         conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {fallback_column_sql}"))
     print(f"SAFE DB MIGRATION: added {table_name}.{column_name}")
+    return True
 
 
 def ensure_live_db_columns():
@@ -165,6 +166,10 @@ def ensure_live_db_columns():
     ensure_column_exists("products", "additional_details", "additional_details TEXT")
     ensure_column_exists("products", "show_on_homepage", "show_on_homepage BOOLEAN DEFAULT FALSE")
     ensure_column_exists("products", "homepage_sort_order", "homepage_sort_order INTEGER DEFAULT 0")
+    added_homepage_desktop_show = ensure_column_exists("products", "show_on_homepage_desktop", "show_on_homepage_desktop BOOLEAN DEFAULT FALSE")
+    added_homepage_desktop_position = ensure_column_exists("products", "homepage_desktop_position", "homepage_desktop_position INTEGER")
+    added_homepage_mobile_show = ensure_column_exists("products", "show_on_homepage_mobile", "show_on_homepage_mobile BOOLEAN DEFAULT FALSE")
+    added_homepage_mobile_position = ensure_column_exists("products", "homepage_mobile_position", "homepage_mobile_position INTEGER")
     ensure_column_exists("colors", "hex_code", "hex_code VARCHAR(20)")
     ensure_column_exists("blog", "blog_date", "blog_date DATE")
     ensure_column_exists("orders", "coupon_code", "coupon_code VARCHAR(50)")
@@ -251,6 +256,39 @@ def ensure_live_db_columns():
                 WHERE homepage_sort_order IS NULL
             """))
             print(f"SAFE DB MIGRATION: backfilled products.homepage_sort_order rows={result.rowcount}")
+            added_any_homepage_device_column = any((
+                added_homepage_desktop_show,
+                added_homepage_desktop_position,
+                added_homepage_mobile_show,
+                added_homepage_mobile_position,
+            ))
+            if added_any_homepage_device_column:
+                result = conn.execute(text("""
+                    UPDATE products
+                    SET show_on_homepage_desktop = show_on_homepage
+                    WHERE show_on_homepage = TRUE
+                      AND COALESCE(show_on_homepage_desktop, FALSE) = FALSE
+                """))
+                print(f"SAFE DB MIGRATION: backfilled products.show_on_homepage_desktop rows={result.rowcount}")
+                result = conn.execute(text("""
+                    UPDATE products
+                    SET homepage_desktop_position = NULLIF(homepage_sort_order, 0)
+                    WHERE homepage_desktop_position IS NULL AND show_on_homepage = TRUE
+                """))
+                print(f"SAFE DB MIGRATION: backfilled products.homepage_desktop_position rows={result.rowcount}")
+                result = conn.execute(text("""
+                    UPDATE products
+                    SET show_on_homepage_mobile = show_on_homepage
+                    WHERE show_on_homepage = TRUE
+                      AND COALESCE(show_on_homepage_mobile, FALSE) = FALSE
+                """))
+                print(f"SAFE DB MIGRATION: backfilled products.show_on_homepage_mobile rows={result.rowcount}")
+                result = conn.execute(text("""
+                    UPDATE products
+                    SET homepage_mobile_position = NULLIF(homepage_sort_order, 0)
+                    WHERE homepage_mobile_position IS NULL AND show_on_homepage = TRUE
+                """))
+                print(f"SAFE DB MIGRATION: backfilled products.homepage_mobile_position rows={result.rowcount}")
     else:
         print("SAFE DB MIGRATION: skipped products backfill; table does not exist")
 
@@ -2424,10 +2462,36 @@ def homepage_product_limit(product_type):
     return 12
 
 
-def homepage_limit_message(product_type):
+HOMEPAGE_DEVICE_RULES = {
+    "desktop": {
+        "label": "Desktop",
+        "valid_counts": (3, 6, 9, 12),
+        "show_field": "show_on_homepage_desktop",
+        "position_field": "homepage_desktop_position",
+        "legacy_show_field": "show_on_homepage",
+        "legacy_position_field": "homepage_sort_order",
+    },
+    "mobile": {
+        "label": "Mobile",
+        "valid_counts": (2, 4, 6, 8, 10, 12),
+        "show_field": "show_on_homepage_mobile",
+        "position_field": "homepage_mobile_position",
+    },
+}
+
+
+def normalize_homepage_device(device):
+    return "mobile" if str(device or "").strip().lower() == "mobile" else "desktop"
+
+
+def homepage_device_rules(device):
+    return HOMEPAGE_DEVICE_RULES[normalize_homepage_device(device)]
+
+
+def homepage_limit_message(product_type, device="desktop"):
     product_type = normalize_product_type(product_type)
     label = "wallets" if product_type == "wallet" else "belts"
-    return f"You can select maximum 12 {label} for homepage."
+    return f"You can select maximum 12 {label} for {homepage_device_rules(device)['label'].lower()} homepage."
 
 
 def homepage_label(product_type):
@@ -2441,10 +2505,11 @@ def active_product_filter():
     )
 
 
-def homepage_selection_count(product_type, exclude_product_id=None):
+def homepage_selection_count(product_type, device="desktop", exclude_product_id=None):
+    rules = homepage_device_rules(device)
     query = Product.query.filter(
         Product.product_type == normalize_product_type(product_type),
-        Product.show_on_homepage == True,
+        getattr(Product, rules["show_field"]) == True,
         active_product_filter()
     )
     if exclude_product_id:
@@ -2452,11 +2517,12 @@ def homepage_selection_count(product_type, exclude_product_id=None):
     return query.count()
 
 
-def homepage_position_in_use(product_type, position, exclude_product_id=None):
+def homepage_position_in_use(product_type, device, position, exclude_product_id=None):
+    rules = homepage_device_rules(device)
     query = Product.query.filter(
         Product.product_type == normalize_product_type(product_type),
-        Product.show_on_homepage == True,
-        Product.homepage_sort_order == position,
+        getattr(Product, rules["show_field"]) == True,
+        getattr(Product, rules["position_field"]) == position,
         active_product_filter()
     )
     if exclude_product_id:
@@ -2464,28 +2530,56 @@ def homepage_position_in_use(product_type, position, exclude_product_id=None):
     return query.first() is not None
 
 
-def homepage_layout_warning(product_type, selected_count):
-    if selected_count in (6, 12):
+def homepage_layout_warning(product_type, selected_count, device="desktop"):
+    rules = homepage_device_rules(device)
+    if selected_count == 0:
         return None
-    if selected_count == 3:
-        return "3 products desktop ke liye valid hai but mobile layout uneven ho sakta hai."
-    if selected_count == 4:
-        return "4 products mobile ke liye valid hai but desktop layout uneven ho sakta hai."
-    return "For clean desktop and mobile layout, please select 6 or 12 products."
+    if selected_count in rules["valid_counts"]:
+        return None
+    allowed = ", ".join(str(count) for count in rules["valid_counts"])
+    return f"{rules['label']} homepage ke liye {allowed} products select karein."
 
 
-def validate_homepage_selection(product_type, show_on_homepage, homepage_position=0, product_id=None, product=None):
+def validate_homepage_selection(product_type, device, show_on_homepage, homepage_position=0, product_id=None, product=None):
+    rules = homepage_device_rules(device)
     if not show_on_homepage:
         return None
     if product is not None and bool(getattr(product, "is_archived", False)):
         return "Inactive products cannot be selected for homepage."
     if homepage_position < 1 or homepage_position > 12:
-        return "Position must be between 1 and 12."
-    if homepage_selection_count(product_type, product_id) >= homepage_product_limit(product_type):
-        return homepage_limit_message(product_type)
-    if homepage_position_in_use(product_type, homepage_position, product_id):
-        return f"This position is already used in {homepage_label(product_type)} section."
+        return f"{rules['label']} position must be between 1 and 12."
+    if homepage_selection_count(product_type, device, product_id) >= homepage_product_limit(product_type):
+        return homepage_limit_message(product_type, device)
+    if homepage_position_in_use(product_type, device, homepage_position, product_id):
+        return f"This {rules['label'].lower()} position is already used in {homepage_label(product_type)} section."
     return None
+
+
+def validate_homepage_device_selections(product_type, selections, product_id=None, product=None):
+    for device, values in selections.items():
+        error = validate_homepage_selection(
+            product_type,
+            device,
+            values.get("show"),
+            values.get("position") or 0,
+            product_id,
+            product,
+        )
+        if error:
+            return error
+    return None
+
+
+def homepage_counts(product_type, exclude_product_id=None):
+    return {
+        "desktop": homepage_selection_count(product_type, "desktop", exclude_product_id),
+        "mobile": homepage_selection_count(product_type, "mobile", exclude_product_id),
+    }
+
+
+def sync_legacy_homepage_fields(product):
+    product.show_on_homepage = bool(getattr(product, "show_on_homepage_desktop", False))
+    product.homepage_sort_order = product.homepage_desktop_position or 0
 
 
 def selected_color_ids_from_request():
@@ -2554,7 +2648,10 @@ def admin_products_by_type(product_type):
     ).filter(Product.product_type == settings["product_type"])
 
     if homepage_filter == "homepage":
-        products = products.filter(Product.show_on_homepage == True)
+        products = products.filter(db.or_(
+            Product.show_on_homepage_desktop == True,
+            Product.show_on_homepage_mobile == True,
+        ))
 
     products = products.order_by(Product.id.desc()).all()
 
@@ -2571,7 +2668,7 @@ def admin_products_by_type(product_type):
         products=unique_products,
         homepage_filter=homepage_filter,
         homepage_limit=homepage_product_limit(settings["product_type"]),
-        homepage_selected_count=homepage_selection_count(settings["product_type"]),
+        homepage_counts=homepage_counts(settings["product_type"]),
         **settings
     )
 
@@ -2593,29 +2690,39 @@ def admin_wallet_products():
 def toggle_product_homepage(id):
     product = Product.query.get_or_404(id)
     product_type = normalize_product_type(product.product_type)
+    device = normalize_homepage_device(request.form.get("homepage_device"))
+    rules = homepage_device_rules(device)
     show_on_homepage = request.form.get("show_on_homepage") == "true"
-    sort_order = parse_int(request.form.get("homepage_sort_order"), product.homepage_sort_order or 0)
+    position = parse_int(
+        request.form.get("homepage_position"),
+        getattr(product, rules["position_field"]) or 0,
+    )
 
-    error = validate_homepage_selection(product_type, show_on_homepage, sort_order, product.id, product)
+    error = validate_homepage_selection(product_type, device, show_on_homepage, position, product.id, product)
     if error:
         return jsonify({
             "success": False,
             "message": error,
-            "show_on_homepage": bool(product.show_on_homepage),
-            "homepage_selected_count": homepage_selection_count(product_type),
+            "show_on_homepage": bool(getattr(product, rules["show_field"])),
+            "homepage_counts": homepage_counts(product_type),
         }), 400
 
-    product.show_on_homepage = show_on_homepage
-    product.homepage_sort_order = sort_order
+    setattr(product, rules["show_field"], show_on_homepage)
+    setattr(product, rules["position_field"], position if show_on_homepage else None)
+    sync_legacy_homepage_fields(product)
     db.session.commit()
 
+    counts = homepage_counts(product_type)
     return jsonify({
         "success": True,
-        "show_on_homepage": bool(product.show_on_homepage),
-        "homepage_sort_order": product.homepage_sort_order or 0,
-        "homepage_selected_count": homepage_selection_count(product_type),
+        "device": device,
+        "show_on_homepage": bool(getattr(product, rules["show_field"])),
+        "homepage_position": getattr(product, rules["position_field"]) or 0,
+        "homepage_counts": counts,
         "homepage_limit": homepage_product_limit(product_type),
-        "layout_warning": homepage_layout_warning(product_type, homepage_selection_count(product_type)),
+        "layout_warning": homepage_layout_warning(product_type, counts[device], device),
+        "desktop_warning": homepage_layout_warning(product_type, counts["desktop"], "desktop"),
+        "mobile_warning": homepage_layout_warning(product_type, counts["mobile"], "mobile"),
     })
 
 
@@ -2698,9 +2805,17 @@ def add_product():
             sizes, sizes_error = validate_belt_sizes(sizes)
             if sizes_error:
                 errors["sizes"] = sizes_error
-        show_on_homepage = bool(request.form.get("show_on_homepage"))
-        homepage_sort_order = parse_int(request.form.get("homepage_sort_order"), 0)
-        homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage, homepage_sort_order)
+        show_on_homepage_desktop = bool(request.form.get("show_on_homepage_desktop"))
+        homepage_desktop_position = parse_int(request.form.get("homepage_desktop_position"), 0)
+        show_on_homepage_mobile = bool(request.form.get("show_on_homepage_mobile"))
+        homepage_mobile_position = parse_int(request.form.get("homepage_mobile_position"), 0)
+        homepage_error = validate_homepage_device_selections(
+            settings["product_type"],
+            {
+                "desktop": {"show": show_on_homepage_desktop, "position": homepage_desktop_position},
+                "mobile": {"show": show_on_homepage_mobile, "position": homepage_mobile_position},
+            },
+        )
         if homepage_error:
             errors["homepage"] = homepage_error
         media_error = validate_product_media_uploads()
@@ -2717,7 +2832,7 @@ def add_product():
                 errors=errors,
                 form_data=form_data,
                 homepage_limit=homepage_product_limit(settings["product_type"]),
-                homepage_selected_count=homepage_selection_count(settings["product_type"]),
+                homepage_counts=homepage_counts(settings["product_type"]),
                 **settings
             )
 
@@ -2752,9 +2867,12 @@ def add_product():
             description=description,
             composition_care=composition_care,
             additional_details=additional_details,
-            show_on_homepage=show_on_homepage,
-            homepage_sort_order=homepage_sort_order
+            show_on_homepage_desktop=show_on_homepage_desktop,
+            homepage_desktop_position=homepage_desktop_position if show_on_homepage_desktop else None,
+            show_on_homepage_mobile=show_on_homepage_mobile,
+            homepage_mobile_position=homepage_mobile_position if show_on_homepage_mobile else None,
         )
+        sync_legacy_homepage_fields(product)
 
         db.session.add(product)
         db.session.commit()
@@ -2900,7 +3018,7 @@ def add_product():
         errors={},
         form_data={},
         homepage_limit=homepage_product_limit(settings["product_type"]),
-        homepage_selected_count=homepage_selection_count(settings["product_type"]),
+        homepage_counts=homepage_counts(settings["product_type"]),
         **settings
     )
 @app.route("/admin/products/edit/<int:id>", methods=["GET", "POST"])
@@ -2934,9 +3052,19 @@ def edit_product(id):
             sizes_text, sizes_error = validate_belt_sizes(sizes_text)
             if sizes_error:
                 errors["sizes"] = sizes_error
-        show_on_homepage = bool(request.form.get("show_on_homepage"))
-        homepage_sort_order = parse_int(request.form.get("homepage_sort_order"), product.homepage_sort_order or 0)
-        homepage_error = validate_homepage_selection(settings["product_type"], show_on_homepage, homepage_sort_order, product.id, product)
+        show_on_homepage_desktop = bool(request.form.get("show_on_homepage_desktop"))
+        homepage_desktop_position = parse_int(request.form.get("homepage_desktop_position"), product.homepage_desktop_position or product.homepage_sort_order or 0)
+        show_on_homepage_mobile = bool(request.form.get("show_on_homepage_mobile"))
+        homepage_mobile_position = parse_int(request.form.get("homepage_mobile_position"), product.homepage_mobile_position or product.homepage_sort_order or 0)
+        homepage_error = validate_homepage_device_selections(
+            settings["product_type"],
+            {
+                "desktop": {"show": show_on_homepage_desktop, "position": homepage_desktop_position},
+                "mobile": {"show": show_on_homepage_mobile, "position": homepage_mobile_position},
+            },
+            product.id,
+            product,
+        )
         if homepage_error:
             errors["homepage"] = homepage_error
         media_error = validate_product_media_uploads()
@@ -2953,7 +3081,7 @@ def edit_product(id):
                 errors=errors,
                 form_data=form_data,
                 homepage_limit=homepage_product_limit(settings["product_type"]),
-                homepage_selected_count=homepage_selection_count(settings["product_type"], product.id),
+                homepage_counts=homepage_counts(settings["product_type"], product.id),
                 **settings
             )
 
@@ -2968,8 +3096,11 @@ def edit_product(id):
         product.composition_care = request.form.get("composition_care")
         product.additional_details = request.form.get("additional_details")
         product.size_unit = request.form.get("size_unit", "inch") if requires_size else None
-        product.show_on_homepage = show_on_homepage
-        product.homepage_sort_order = homepage_sort_order
+        product.show_on_homepage_desktop = show_on_homepage_desktop
+        product.homepage_desktop_position = homepage_desktop_position if show_on_homepage_desktop else None
+        product.show_on_homepage_mobile = show_on_homepage_mobile
+        product.homepage_mobile_position = homepage_mobile_position if show_on_homepage_mobile else None
+        sync_legacy_homepage_fields(product)
 
         # =========================
         # PRICE
@@ -3177,7 +3308,7 @@ def edit_product(id):
         errors={},
         form_data={},
         homepage_limit=homepage_product_limit(settings["product_type"]),
-        homepage_selected_count=homepage_selection_count(settings["product_type"], product.id),
+        homepage_counts=homepage_counts(settings["product_type"], product.id),
         **settings
     )
 
@@ -3244,16 +3375,23 @@ def archive_product(id):
     product = Product.query.get_or_404(id)
     product.is_archived = True
     product.show_on_homepage = False
+    product.homepage_sort_order = 0
+    product.show_on_homepage_desktop = False
+    product.homepage_desktop_position = None
+    product.show_on_homepage_mobile = False
+    product.homepage_mobile_position = None
     db.session.commit()
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        counts = homepage_counts(product.product_type)
         return jsonify({
             "success": True,
             "product_id": id,
             "is_archived": True,
             "show_on_homepage": False,
-            "homepage_selected_count": homepage_selection_count(product.product_type),
-            "layout_warning": homepage_layout_warning(product.product_type, homepage_selection_count(product.product_type)),
+            "homepage_counts": counts,
+            "desktop_warning": homepage_layout_warning(product.product_type, counts["desktop"], "desktop"),
+            "mobile_warning": homepage_layout_warning(product.product_type, counts["mobile"], "mobile"),
             "message": "Product archived successfully"
         })
 
@@ -4434,8 +4572,7 @@ def home():
         hero_slides=hero_slides,
         style_videos=style_videos,
         auto_slider_images=auto_slider_images,
-        index_belts_limit=homepage_product_limit("belt"),
-        index_wallets_limit=homepage_product_limit("wallet"),
+        index_desktop_products_limit=homepage_product_limit("belt"),
         index_mobile_products_limit=homepage_product_limit("belt"),
     )
 
@@ -4649,20 +4786,21 @@ def products():
 
     if request.args.get("homepage") == "1":
         all_products = []
-        type_limits = {
-            "belt": homepage_product_limit("belt"),
-            "wallet": homepage_product_limit("wallet"),
-        }
-
-        for product_type, limit in type_limits.items():
+        for product_type in ("belt", "wallet"):
             selected = Product.query.filter(
                 active_filter,
                 Product.product_type == product_type,
-                Product.show_on_homepage == True
+                db.or_(
+                    Product.show_on_homepage_desktop == True,
+                    Product.show_on_homepage_mobile == True,
+                )
             ).order_by(
-                Product.homepage_sort_order.asc(),
+                db.case((Product.homepage_desktop_position.is_(None), 1), else_=0),
+                Product.homepage_desktop_position.asc(),
+                db.case((Product.homepage_mobile_position.is_(None), 1), else_=0),
+                Product.homepage_mobile_position.asc(),
                 Product.id.desc()
-            ).limit(limit).all()
+            ).all()
 
             all_products.extend(selected)
     else:
@@ -4721,6 +4859,10 @@ def products():
                 "product_type": p.product_type or "belt",
                 "show_on_homepage": bool(p.show_on_homepage),
                 "homepage_sort_order": p.homepage_sort_order or 0,
+                "show_on_homepage_desktop": bool(p.show_on_homepage_desktop),
+                "homepage_desktop_position": p.homepage_desktop_position or 0,
+                "show_on_homepage_mobile": bool(p.show_on_homepage_mobile),
+                "homepage_mobile_position": p.homepage_mobile_position or 0,
                 "size_type": product_size_type(p),
                 "requires_size": requires_size,
 
@@ -4761,6 +4903,10 @@ def products():
                 "product_type": p.product_type or "belt",
                 "show_on_homepage": bool(p.show_on_homepage),
                 "homepage_sort_order": p.homepage_sort_order or 0,
+                "show_on_homepage_desktop": bool(p.show_on_homepage_desktop),
+                "homepage_desktop_position": p.homepage_desktop_position or 0,
+                "show_on_homepage_mobile": bool(p.show_on_homepage_mobile),
+                "homepage_mobile_position": p.homepage_mobile_position or 0,
                 "size_type": product_size_type(p),
                 "requires_size": requires_size,
 

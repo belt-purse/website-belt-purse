@@ -151,16 +151,16 @@
                     <label class="homepage-check">
                         <input
                             type="checkbox"
-                            name="show_on_homepage"
+                            name="show_on_homepage_desktop"
                             value="1"
-                            {% if form_data.get('show_on_homepage') or (not form_data and product.show_on_homepage) %}checked{% endif %}
+                            {% if form_data.get('show_on_homepage_desktop') or (not form_data and (product.show_on_homepage_desktop or product.show_on_homepage)) %}checked{% endif %}
                         >
-                        <span>Show on Homepage / Index Page</span>
+                        <span>Show on Desktop Homepage</span>
                     </label>
                     <p class="hint-text">
-                        Selected {{ homepage_selected_count or 0 }} of {{ homepage_limit }} other {{ (plural_label or 'products')|lower }}.
-                        Position must be 1 to 12 and unique in this section.
-                        For clean desktop and mobile layout, select either 6 or 12 products.
+                        Desktop: select 3, 6, 9, or 12 products.
+                        Selected {{ (homepage_counts or {}).get('desktop', 0) }} of {{ homepage_limit }} other {{ (plural_label or 'products')|lower }}.
+                        Desktop position must be 1 to 12 and unique in this section.
                     </p>
                     {% if errors.get('homepage') %}
                     <small class="field-error-message">{{ errors.get('homepage') }}</small>
@@ -168,14 +168,44 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Homepage Position</label>
+                    <label>Desktop Position</label>
                     <input
                         type="number"
-                        name="homepage_sort_order"
+                        name="homepage_desktop_position"
                         min="1"
                         max="12"
                         step="1"
-                        value="{{ form_data.get('homepage_sort_order', product.homepage_sort_order or 0) }}"
+                        value="{{ form_data.get('homepage_desktop_position', product.homepage_desktop_position or product.homepage_sort_order or '') }}"
+                        placeholder="1-12"
+                    >
+                </div>
+
+                <div class="homepage-control-box">
+                    <label class="homepage-check">
+                        <input
+                            type="checkbox"
+                            name="show_on_homepage_mobile"
+                            value="1"
+                            {% if form_data.get('show_on_homepage_mobile') or (not form_data and (product.show_on_homepage_mobile or product.show_on_homepage)) %}checked{% endif %}
+                        >
+                        <span>Show on Mobile Homepage</span>
+                    </label>
+                    <p class="hint-text">
+                        Mobile: select 2, 4, 6, 8, 10, or 12 products.
+                        Selected {{ (homepage_counts or {}).get('mobile', 0) }} of {{ homepage_limit }} other {{ (plural_label or 'products')|lower }}.
+                        Mobile position must be 1 to 12 and unique in this section.
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label>Mobile Position</label>
+                    <input
+                        type="number"
+                        name="homepage_mobile_position"
+                        min="1"
+                        max="12"
+                        step="1"
+                        value="{{ form_data.get('homepage_mobile_position', product.homepage_mobile_position or product.homepage_sort_order or '') }}"
                         placeholder="1-12"
                     >
                 </div>
