@@ -5485,21 +5485,13 @@ def remove_cart(id):
     user = User.query.filter_by(email=session['email']).first()
     cart_item_id = request_cart_item_id()
 
-    if cart_item_id:
-        cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
-        if not cart_item:
-            return cart_json_error("Cart item not found", 404, product_id=id, cart_item_id=cart_item_id, user_id=user.id)
-        db.session.delete(cart_item)
-    else:
-        color_id = request_color_id()
-        size_id = normalize_cart_size_id(id, request.args.get("size_id"))
-        clear_wallet_cart_sizes(id, user.id)
+    if not cart_item_id:
+        return cart_json_error("Cart item not found", 404, product_id=id, cart_item_id=cart_item_id, user_id=user.id)
 
-        db.session.execute(text("""
-            DELETE FROM cart WHERE user_id=:uid AND product_id=:pid
-            AND ((color_id IS NULL AND :cid IS NULL) OR color_id=:cid)
-            AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-        """), {"uid": user.id, "pid": id, "cid": color_id, "sid": size_id})
+    cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
+    if not cart_item:
+        return cart_json_error("Cart item not found", 404, product_id=id, cart_item_id=cart_item_id, user_id=user.id)
+    db.session.delete(cart_item)
 
     db.session.commit()
 
@@ -5520,18 +5512,10 @@ def decrease_cart(id):
     user = User.query.filter_by(email=session['email']).first()
     cart_item_id = request_cart_item_id()
 
-    if cart_item_id:
-        cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
-    else:
-        color_id = request_color_id()
-        size_id = normalize_cart_size_id(id, request.args.get("size_id"))
-        clear_wallet_cart_sizes(id, user.id)
-        cart_item = Cart.query.filter(
-            Cart.user_id == user.id,
-            Cart.product_id == id,
-            Cart.color_id.is_(None) if color_id is None else Cart.color_id == color_id,
-            Cart.size_id.is_(None) if size_id is None else Cart.size_id == size_id
-        ).order_by(Cart.id.asc()).first()
+    if not cart_item_id:
+        return cart_json_error("Cart item not found", 404, product_id=id, cart_item_id=cart_item_id, user_id=user.id)
+
+    cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
 
     if not cart_item:
         return cart_json_error("Cart item not found", 404, product_id=id, cart_item_id=cart_item_id, user_id=user.id)
@@ -5911,18 +5895,10 @@ def update_quantity(product_id, action):
     cart_item_id = request_cart_item_id()
     cart_item = None
 
-    if cart_item_id:
-        cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
-    else:
-        color_id = request_color_id()
-        size_id = normalize_cart_size_id(product_id, request.args.get("size_id"))
-        clear_wallet_cart_sizes(product_id, user.id)
-        cart_item = Cart.query.filter(
-            Cart.user_id == user.id,
-            Cart.product_id == product_id,
-            Cart.color_id.is_(None) if color_id is None else Cart.color_id == color_id,
-            Cart.size_id.is_(None) if size_id is None else Cart.size_id == size_id
-        ).order_by(Cart.id.asc()).first()
+    if not cart_item_id:
+        return cart_json_error("Cart item not found", 404, product_id=product_id, cart_item_id=cart_item_id, user_id=user.id)
+
+    cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user.id).first()
 
     if not cart_item:
         return cart_json_error("Cart item not found", 404, product_id=product_id, cart_item_id=cart_item_id, user_id=user.id)

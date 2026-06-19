@@ -25,7 +25,7 @@
         <div class="cart-items cart-items-list" id="cartItems">
             {% for p in products %}
             {% set variant_key = p.id|string ~ '-' ~ (p.color_id or 'no-color')|string ~ '-' ~ (p.size_id or 'no-size')|string %}
-            <div class="cart-card cart-item-card" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">
+            <div class="cart-card cart-item-card" data-cart-item-id="{{ p.cart_id }}" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">
 
                 <img src="{{ p.image_url or '/static/images/default.png' }}" class="product-img cart-item-image">
 
@@ -57,16 +57,13 @@
 </p>
 
                     <div class="qty-box cart-qty-control">
-                        <button class="qty-btn minus" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}" {% if p.unavailable %}disabled{% endif %}>−</button>
+                        <button class="qty-btn minus" data-cart-item-id="{{ p.cart_id }}" data-cart-id="{{ p.cart_id }}" data-action="minus" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}" {% if p.unavailable %}disabled{% endif %}>−</button>
                         <span class="qty-number" id="qty-{{ variant_key }}">{{ p.quantity }}</span>
-                        <button class="qty-btn plus" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}" {% if p.unavailable %}disabled{% endif %}>+</button>
+                        <button class="qty-btn plus" data-cart-item-id="{{ p.cart_id }}" data-cart-id="{{ p.cart_id }}" data-action="plus" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}" {% if p.unavailable %}disabled{% endif %}>+</button>
                     </div>
 
    <div class="actions cart-action-buttons">
-    <button class="removeBtn remove-btn cart-remove-btn cart-item-remove-btn" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Remove</button>
-    {% if not p.unavailable %}
-    <button class="wishBtn" data-cart-id="{{ p.cart_id }}" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Move to Wishlist</button>
-    {% endif %}
+    <button class="removeBtn remove-btn cart-remove-btn cart-item-remove-btn" data-cart-item-id="{{ p.cart_id }}" data-cart-id="{{ p.cart_id }}" data-action="remove" data-id="{{ p.id }}" data-color="{{ p.color_id or '' }}" data-size="{{ p.size_id or '' }}">Remove</button>
 </div>
                 </div>
             </div>
@@ -705,18 +702,19 @@ function smoothRemoveCard(card){
 
 function cartActionParams(card, btn){
     return {
-        cartId: btn?.dataset.cartId || card?.dataset.cartId || "",
+        cartId: btn?.dataset.cartItemId || card?.dataset.cartItemId || btn?.dataset.cartId || card?.dataset.cartId || "",
         id: btn?.dataset.id || card?.dataset.id || "",
         color: btn?.dataset.color || card?.dataset.color || "",
-        size: btn?.dataset.size || card?.dataset.size || ""
+        size: btn?.dataset.size || card?.dataset.size || "",
+        action: btn?.dataset.action || ""
     };
 }
 
 function cartMutationUrl(path, params){
     const query = new URLSearchParams();
     if(params.cartId) query.set("cart_item_id", params.cartId);
-    if(params.color) query.set("color_id", params.color);
-    if(params.size) query.set("size_id", params.size);
+    if(!params.cartId && params.color) query.set("color_id", params.color);
+    if(!params.cartId && params.size) query.set("size_id", params.size);
     return `${path}?${query.toString()}`;
 }
 
@@ -751,75 +749,116 @@ function handleCartError(data, fallback){
     showLiveToast(message, "error");
 }
 
+function refreshCartTotals(data = null){
+    if(data) updateCartSummary(data);
+    else if(document.getElementById("couponCode")?.value.trim()) applyCoupon();
+}
 
+function refreshCartCount(data = null){
+    if(data && typeof updateNavbarCounts === "function"){
+        updateNavbarCounts(data.cart_count, data.wishlist_count);
+        return;
+    }
+    if(typeof updateNavbarCounts === "function") updateNavbarCounts();
+}
 
-document.querySelectorAll(".removeBtn").forEach(btn => {
-    btn.addEventListener("click", function () {
-        if(this.dataset.loading === "true") return;
+function updateCartItem(cartItemId, action, button = null){
+    const card = button ? button.closest(".cart-card") : document.querySelector(`.cart-card[data-cart-item-id="${cartItemId}"]`);
+    const params = cartActionParams(card, button);
+    params.cartId = cartItemId || params.cartId;
 
-        let card = this.closest(".cart-card");
-        const params = cartActionParams(card, this);
-        const restore = typeof setButtonLoading === "function" ? setButtonLoading(this, "Removing...") : (()=>{});
+    if(!params.cartId){
+        handleCartError({ message: "Cart item not found" }, "Cart item not found");
+        return Promise.resolve();
+    }
+    if(!["plus", "minus"].includes(action)){
+        handleCartError({ message: "Invalid quantity action" }, "Invalid quantity action");
+        return Promise.resolve();
+    }
 
-        cartMutationFetch(`/remove_cart/${params.id}`, params)
-        .then(({ ok, data }) => {
+    const restore = button && typeof setButtonLoading === "function" ? setButtonLoading(button, "...") : (()=>{});
+    return cartMutationFetch(`/update_quantity/${params.id}/` + action, params)
+    .then(({ ok, data })=>{
+        if(!ok || (!data.success && data.status !== "ok")){
+            handleCartError(data, "Could not update cart");
+            return;
+        }
+        const qtyEl = card?.querySelector(".qty-number");
+        if(data.quantity > 0){
+            if(qtyEl) qtyEl.innerText = data.quantity;
+            const itemEl = card?.querySelector(".item-total");
+            if(itemEl) itemEl.innerText = "Total: " + formatMoney(data.item_total);
+        } else {
+            smoothRemoveCard(card);
+        }
+        refreshCartTotals(data);
+        refreshCartCount(data);
+    })
+    .catch(err => {
+        console.error("Cart quantity update error:", err);
+        showLiveToast(err.message || "Could not update cart", "error");
+    })
+    .finally(restore);
+}
 
-            if (ok && data.success) {
-                smoothRemoveCard(card).then(() => updateCartSummary(data));
+function removeCartItem(cartItemId, button = null){
+    const card = button ? button.closest(".cart-card") : document.querySelector(`.cart-card[data-cart-item-id="${cartItemId}"]`);
+    const params = cartActionParams(card, button);
+    params.cartId = cartItemId || params.cartId;
+
+    if(!params.cartId){
+        handleCartError({ message: "Cart item not found" }, "Cart item not found");
+        return Promise.resolve();
+    }
+
+    const restore = button && typeof setButtonLoading === "function" ? setButtonLoading(button, "Removing...") : (()=>{});
+    return cartMutationFetch(`/remove_cart/${params.id}`, params)
+    .then(({ ok, data }) => {
+        if (ok && data.success) {
+            return smoothRemoveCard(card).then(() => {
+                refreshCartTotals(data);
+                refreshCartCount(data);
                 showLiveToast(data.message || "Removed from cart", "success");
-            } else {
-                handleCartError(data, "Could not remove item");
-            }
+            });
+        }
+        handleCartError(data, "Could not remove item");
+    })
+    .catch(err => {
+        console.error("Cart remove error:", err);
+        showLiveToast(err.message || "Could not remove item", "error");
+    })
+    .finally(restore);
+}
 
-        })
-        .catch(err => {
-            console.error("Cart remove error:", err);
-            showLiveToast(err.message || "Could not remove item", "error");
-        })
-        .finally(restore);
-    });
+document.addEventListener("click", function(event){
+    const button = event.target.closest(".cart-page .qty-btn, .cart-page .cart-item-remove-btn");
+    if(!button || button.dataset.loading === "true") return;
+
+    const card = button.closest(".cart-card");
+    const params = cartActionParams(card, button);
+    if(!params.cartId && button.hasAttribute("onclick")) return;
+
+    if(button.classList.contains("cart-item-remove-btn") || params.action === "remove"){
+        event.preventDefault();
+        removeCartItem(params.cartId, button);
+        return;
+    }
+
+    if(button.classList.contains("plus") || params.action === "plus"){
+        event.preventDefault();
+        updateCartItem(params.cartId, "plus", button);
+        return;
+    }
+
+    if(button.classList.contains("minus") || params.action === "minus"){
+        event.preventDefault();
+        updateCartItem(params.cartId, "minus", button);
+    }
 });
 
 
 window.addEventListener("pageshow", function () {
     updateNavbarCounts(); 
-});
-
-// MOVE TO WISHLIST
-document.querySelectorAll(".wishBtn").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-        if(btn.dataset.loading === "true") return;
-        let card = btn.closest(".cart-card");
-        const params = cartActionParams(card, btn);
-        const restore = typeof setButtonLoading === "function" ? setButtonLoading(btn, "Moving...") : (()=>{});
-
-        const wishlistPayload = { product_id: params.id, color_id: params.color || null, cart_item_id: params.cartId || null };
-        console.log("Move to wishlist request payload:", wishlistPayload);
-        fetch(`/add_to_wishlist/${params.id}?color_id=${params.color}`)
-        .then(res => res.json().catch(() => ({})).then(data => {
-            console.log("Move to wishlist response:", { requestPayload: wishlistPayload, status: res.status, responseJson: data, errorMessage: data?.message || data?.error || "" });
-            return { ok: res.ok, data };
-        }))
-        .then(({ ok, data })=>{
-            if(!ok || !data.success){
-                throw new Error(data.message || data.error || "Could not move item to wishlist");
-            }
-            return cartMutationFetch(`/remove_cart/${params.id}`, params);
-        })
-        .then(({ ok, data })=>{
-            if(ok && data.success){
-                smoothRemoveCard(card).then(() => updateCartSummary(data));
-                showLiveToast("Moved to wishlist", "success");
-            } else {
-                handleCartError(data, "Could not move item to wishlist");
-            }
-        })
-        .catch(err => {
-            console.error("Move to wishlist error:", err);
-            showLiveToast(err.message || "Could not move item to wishlist", "error");
-        })
-        .finally(restore);
-    });
 });
 let selectedAddress = null;
 
@@ -1206,112 +1245,8 @@ if (confirmOrderBtn && confirmOrderBtn.dataset.listenerAttached !== "true") {
     });
 }
 
-document.querySelectorAll(".plus").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-        if(btn.dataset.loading === "true") return;
-        let card = btn.closest(".cart-card");
-        const params = cartActionParams(card, btn);
-        const restore = typeof setButtonLoading === "function" ? setButtonLoading(btn, "...") : (()=>{});
-
-        cartMutationFetch(`/update_quantity/${params.id}/plus`, params)
-        .then(({ ok, data })=>{
-            if(!ok || (!data.success && data.status !== "ok")){
-                handleCartError(data, "Could not update cart");
-                return;
-            }
-            let qtyEl = card.querySelector(".qty-number");
-            qtyEl.innerText = data.quantity;
-            let itemEl = card.querySelector(".item-total");
-            if(itemEl) itemEl.innerText = "Total: " + formatMoney(data.item_total);
-            updateCartSummary(data);
-        })
-        .catch(err => {
-            console.error("Cart quantity plus error:", err);
-            showLiveToast(err.message || "Could not update cart", "error");
-        })
-        .finally(restore);
-    });
-});
-
-// ➖ Decrease Quantity
-document.querySelectorAll(".minus").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-        if(btn.dataset.loading === "true") return;
-        let card = btn.closest(".cart-card");
-        const params = cartActionParams(card, btn);
-        const restore = typeof setButtonLoading === "function" ? setButtonLoading(btn, "...") : (()=>{});
-
-        cartMutationFetch(`/update_quantity/${params.id}/minus`, params)
-        .then(({ ok, data })=>{
-            if(!ok || (!data.success && data.status !== "ok")){
-                handleCartError(data, "Could not update cart");
-                return;
-            }
-            let qtyEl = card.querySelector(".qty-number");
-
-            if(data.quantity > 0){
-                qtyEl.innerText = data.quantity;
-                let itemEl = card.querySelector(".item-total");
-                if(itemEl) itemEl.innerText = "Total: " + formatMoney(data.item_total);
-            } else {
-                smoothRemoveCard(card);
-            }
-
-            updateCartSummary(data);
-        })
-        .catch(err => {
-            console.error("Cart quantity minus error:", err);
-            showLiveToast(err.message || "Could not update cart", "error");
-        })
-        .finally(restore);
-    });
-});
-
-
 function removeItem(id, color = "", size = "", cartId = ""){
-    const params = { id, color, size, cartId };
-    cartMutationFetch(`/remove_cart/${id}`, params)
-    .then(({ ok, data })=>{
-        if(ok && data.success){
-            updateCartSummary(data);
-            showLiveToast(data.message || "Removed from cart", "success");
-        } else {
-            handleCartError(data, "Could not remove item");
-        }
-    })
-    .catch(err => {
-        console.error("Cart remove error:", err);
-        showLiveToast(err.message || "Could not remove item", "error");
-    });
-}
-
-function moveToWishlist(id, color = "", size = "", cartId = ""){
-    const params = { id, color, size, cartId };
-    const wishlistPayload = { product_id: id, color_id: color || null, cart_item_id: cartId || null };
-    console.log("Move to wishlist request payload:", wishlistPayload);
-    fetch(`/add_to_wishlist/${id}?color_id=${color}`)
-    .then(res => res.json().catch(() => ({})).then(data => {
-        console.log("Move to wishlist response:", { requestPayload: wishlistPayload, status: res.status, responseJson: data, errorMessage: data?.message || data?.error || "" });
-        return { ok: res.ok, data };
-    }))
-    .then(({ ok, data })=>{
-        if(!ok || !data.success){
-            throw new Error(data.message || data.error || "Could not move item to wishlist");
-        }
-        return cartMutationFetch(`/remove_cart/${id}`, params);
-    })
-    .then(({ ok, data })=>{
-        if(ok && data.success){
-            updateCartSummary(data);
-            showLiveToast("Moved to wishlist", "success");
-        } else {
-            handleCartError(data, "Could not move item to wishlist");
-        }
-    })
-    .catch(err => {
-        console.error("Move to wishlist error:", err);
-        showLiveToast(err.message || "Something went wrong. Please try again.", "error");
-    });
+    removeCartItem(cartId);
 }
 </script>
 
@@ -1473,23 +1408,6 @@ function moveToWishlist(id, color = "", size = "", cartId = ""){
     justify-content:flex-end;
     gap: 8px;
     margin-top: 0;
-}
-.wishBtn {
-    background: #e6f7ff;   /* light blue */
-    border: none;
-    min-height:36px;
-    padding: 8px 14px;
-    border-radius: 8px;
-    color: #083E3A;
-    cursor: pointer;
-    transition: 0.3s;
-    font-weight:700;
-    white-space:nowrap;
-}
-
-.wishBtn:hover {
-    background: var(--btn-gradient);
-    color: #fff;
 }
 .removeBtn {
     background: #ffecec;
@@ -1920,8 +1838,7 @@ function moveToWishlist(id, color = "", size = "", cartId = ""){
         width:100%;
     }
 
-    .removeBtn,
-    .wishBtn {
+    .removeBtn {
         font-size: 11px;
         min-height:34px;
         padding: 7px 10px;
