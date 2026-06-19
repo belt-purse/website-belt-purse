@@ -158,7 +158,7 @@
                         <span>Show on Desktop Homepage</span>
                     </label>
                     <p class="hint-text">
-                        Desktop: select 3, 6, 9, or 12 products.
+                        Desktop: select any count from 1 to 12 products.
                         Selected {{ (homepage_counts or {}).get('desktop', 0) }} of {{ homepage_limit }} other {{ (plural_label or 'products')|lower }}.
                         Desktop position must be 1 to 12 and unique in this section.
                     </p>
@@ -186,12 +186,12 @@
                             type="checkbox"
                             name="show_on_homepage_mobile"
                             value="1"
-                            {% if form_data.get('show_on_homepage_mobile') or (not form_data and (product.show_on_homepage_mobile or product.show_on_homepage)) %}checked{% endif %}
+                            {% if form_data.get('show_on_homepage_mobile') or (not form_data and product.show_on_homepage_mobile) %}checked{% endif %}
                         >
                         <span>Show on Mobile Homepage</span>
                     </label>
                     <p class="hint-text">
-                        Mobile: select 2, 4, 6, 8, 10, or 12 products.
+                        Mobile: select any count from 1 to 12 products.
                         Selected {{ (homepage_counts or {}).get('mobile', 0) }} of {{ homepage_limit }} other {{ (plural_label or 'products')|lower }}.
                         Mobile position must be 1 to 12 and unique in this section.
                     </p>
@@ -205,7 +205,7 @@
                         min="1"
                         max="12"
                         step="1"
-                        value="{{ form_data.get('homepage_mobile_position', product.homepage_mobile_position or product.homepage_sort_order or '') }}"
+                        value="{{ form_data.get('homepage_mobile_position', product.homepage_mobile_position or '') }}"
                         placeholder="1-12"
                     >
                 </div>

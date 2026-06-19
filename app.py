@@ -2465,7 +2465,6 @@ def homepage_product_limit(product_type):
 HOMEPAGE_DEVICE_RULES = {
     "desktop": {
         "label": "Desktop",
-        "valid_counts": (3, 6, 9, 12),
         "show_field": "show_on_homepage_desktop",
         "position_field": "homepage_desktop_position",
         "legacy_show_field": "show_on_homepage",
@@ -2473,7 +2472,6 @@ HOMEPAGE_DEVICE_RULES = {
     },
     "mobile": {
         "label": "Mobile",
-        "valid_counts": (2, 4, 6, 8, 10, 12),
         "show_field": "show_on_homepage_mobile",
         "position_field": "homepage_mobile_position",
     },
@@ -2531,13 +2529,7 @@ def homepage_position_in_use(product_type, device, position, exclude_product_id=
 
 
 def homepage_layout_warning(product_type, selected_count, device="desktop"):
-    rules = homepage_device_rules(device)
-    if selected_count == 0:
-        return None
-    if selected_count in rules["valid_counts"]:
-        return None
-    allowed = ", ".join(str(count) for count in rules["valid_counts"])
-    return f"{rules['label']} homepage ke liye {allowed} products select karein."
+    return None
 
 
 def validate_homepage_selection(product_type, device, show_on_homepage, homepage_position=0, product_id=None, product=None):

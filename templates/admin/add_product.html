@@ -106,7 +106,7 @@
                         <span>Show on Desktop Homepage</span>
                     </label>
                     <p class="hint-text">
-                        Desktop: select 3, 6, 9, or 12 products.
+                        Desktop: select any count from 1 to 12 products.
                         Selected {{ (homepage_counts or {}).get('desktop', 0) }} of {{ homepage_limit }} {{ (plural_label or 'products')|lower }}.
                         Desktop position must be 1 to 12 and unique in this section.
                     </p>
@@ -139,7 +139,7 @@
                         <span>Show on Mobile Homepage</span>
                     </label>
                     <p class="hint-text">
-                        Mobile: select 2, 4, 6, 8, 10, or 12 products.
+                        Mobile: select any count from 1 to 12 products.
                         Selected {{ (homepage_counts or {}).get('mobile', 0) }} of {{ homepage_limit }} {{ (plural_label or 'products')|lower }}.
                         Mobile position must be 1 to 12 and unique in this section.
                     </p>

@@ -25,18 +25,12 @@
             &nbsp;|&nbsp;
             Mobile <span id="homepageMobileCount">{{ (homepage_counts or {}).get('mobile', 0) }}</span> / {{ homepage_limit }}
             <p class="homepage-help">
-                Desktop: select 3, 6, 9, or 12 products. Mobile: select 2, 4, 6, 8, 10, or 12 products.
+                Desktop and mobile can each use any count from 1 to 12.
                 Positions must be 1 to 12 and unique per device.
             </p>
             <p class="homepage-warning" id="homepageDesktopWarning">
-                {% if (homepage_counts or {}).get('desktop', 0) not in [0, 3, 6, 9, 12] %}
-                    Desktop homepage ke liye 3, 6, 9, or 12 products select karein.
-                {% endif %}
             </p>
             <p class="homepage-warning" id="homepageMobileWarning">
-                {% if (homepage_counts or {}).get('mobile', 0) not in [0, 2, 4, 6, 8, 10, 12] %}
-                    Mobile homepage ke liye 2, 4, 6, 8, 10, or 12 products select karein.
-                {% endif %}
             </p>
         </div>
         <div class="homepage-filters">
