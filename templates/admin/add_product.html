@@ -997,11 +997,11 @@
 const MEDIA_LIMITS = {
     image: {
         maxCount: 5,
-        maxBytes: 3 * 1024 * 1024,
+        maxBytes: 8 * 1024 * 1024,
         extensions: ["jpg", "jpeg", "png", "webp"],
         countMessage: "You can upload maximum 5 images at a time.",
         typeMessage: "Only JPG, JPEG, PNG and WEBP image files are allowed.",
-        sizeMessage: "Each image must be 3MB or smaller."
+        sizeMessage: "Each image must be 8MB or smaller."
     },
     video: {
         maxCount: 2,
@@ -1107,14 +1107,45 @@ let cropQueue = [];
 let croppedFiles = [];
 let currentInput = null;
 let currentContainer = null;
+let currentOriginalFile = null;
+
+const PRODUCT_CROP_MAX_SIZE = 1600;
+const PRODUCT_CROP_JPEG_QUALITY = 0.92;
+
+function productCropMimeType(file) {
+    return file && file.type === "image/png" ? "image/png" : "image/jpeg";
+}
+
+function productCropExtension(mimeType) {
+    return mimeType === "image/png" ? "png" : "jpg";
+}
+
+function productCropOutputSize() {
+    const data = cropper.getData(true);
+    const sourceCropSide = Math.floor(Math.min(data.width || PRODUCT_CROP_MAX_SIZE, data.height || PRODUCT_CROP_MAX_SIZE));
+    return Math.max(1, Math.min(PRODUCT_CROP_MAX_SIZE, sourceCropSide));
+}
 
 // OPEN CROPPER
 function openCropper(file) {
+    currentOriginalFile = file;
     const reader = new FileReader();
 
     reader.onload = function(e) {
         cropImage.src = e.target.result;
         cropModal.style.display = "flex";
+
+        const probe = new Image();
+        probe.onload = function() {
+            console.log("Product crop original image:", {
+                name: file.name,
+                type: file.type,
+                bytes: file.size,
+                width: probe.naturalWidth,
+                height: probe.naturalHeight
+            });
+        };
+        probe.src = e.target.result;
 
         setTimeout(() => {
             if (cropper) cropper.destroy();
@@ -1131,14 +1162,28 @@ function openCropper(file) {
 
 // SAVE CROPPED IMAGE
 function saveCrop() {
+    const outputSize = productCropOutputSize();
+    const mimeType = productCropMimeType(currentOriginalFile);
+    const extension = productCropExtension(mimeType);
     const canvas = cropper.getCroppedCanvas({
-        width: 600,
-        height: 600
+        width: outputSize,
+        height: outputSize,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: "high"
     });
 
     canvas.toBlob(function(blob) {
+        if (!blob) return;
 
-        const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+        console.log("Product crop output image:", {
+            sourceName: currentOriginalFile?.name,
+            width: outputSize,
+            height: outputSize,
+            type: mimeType,
+            bytes: blob.size
+        });
+
+        const file = new File([blob], `cropped_${Date.now()}.${extension}`, { type: mimeType });
 
         croppedFiles.push(file);
 
@@ -1158,7 +1203,7 @@ function saveCrop() {
             openCropper(cropQueue.shift());
         }
 
-    }, "image/jpeg");
+    }, mimeType, mimeType === "image/jpeg" ? PRODUCT_CROP_JPEG_QUALITY : undefined);
 }
 
 function closeCropModal() {

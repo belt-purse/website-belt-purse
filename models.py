@@ -121,7 +121,8 @@ class ProductImage(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
-    image_url = db.Column(db.String(255))
+    image_url = db.Column(db.String(500))
+    public_id = db.Column(db.String(255))
     is_primary = db.Column(db.Boolean, default=False)
     color_id = db.Column(db.Integer, db.ForeignKey('colors.id'), nullable=True)
 

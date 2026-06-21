@@ -2,6 +2,7 @@ from collections import defaultdict
 from flask_login import login_required, current_user
 import cloudinary
 import cloudinary.uploader
+from cloudinary import CloudinaryImage
 from flask import Flask, flash, render_template, request, jsonify, session, redirect, abort, url_for, make_response, has_request_context
 from sqlalchemy import exists, text,inspect
 from sqlalchemy.orm import joinedload
@@ -166,6 +167,7 @@ def ensure_live_db_columns():
     ensure_column_exists("products", "additional_details", "additional_details TEXT")
     ensure_column_exists("products", "show_on_homepage", "show_on_homepage BOOLEAN DEFAULT FALSE")
     ensure_column_exists("products", "homepage_sort_order", "homepage_sort_order INTEGER DEFAULT 0")
+    ensure_column_exists("product_images", "public_id", "public_id VARCHAR(255)")
     added_homepage_desktop_show = ensure_column_exists("products", "show_on_homepage_desktop", "show_on_homepage_desktop BOOLEAN DEFAULT FALSE")
     added_homepage_desktop_position = ensure_column_exists("products", "homepage_desktop_position", "homepage_desktop_position INTEGER")
     added_homepage_mobile_show = ensure_column_exists("products", "show_on_homepage_mobile", "show_on_homepage_mobile BOOLEAN DEFAULT FALSE")
@@ -479,7 +481,7 @@ ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 ALLOWED_VIDEO_EXTENSIONS = {"mp4", "mov", "webm"}
 MAX_PRODUCT_IMAGES_PER_UPLOAD = 5
 MAX_PRODUCT_VIDEOS_PER_UPLOAD = 2
-MAX_PRODUCT_IMAGE_BYTES = 3 * 1024 * 1024
+MAX_PRODUCT_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_PRODUCT_VIDEO_BYTES = 20 * 1024 * 1024
 
 # Keep this for old local blog image fallback support
@@ -489,6 +491,30 @@ BLOG_UPLOAD_SUBDIR = "uploads/blogs"
 # BLOG_UPLOAD_FOLDER = os.path.join(app.static_folder, "uploads", "blogs")
 
 DEFAULT_IMAGE_URL = "/static/images/default.png"
+
+PRODUCT_IMAGE_TRANSFORMS = {
+    "thumb": {
+        "width": 600,
+        "height": 600,
+        "crop": "fill",
+        "quality": "auto:good",
+        "fetch_format": "auto",
+        "dpr": "auto",
+    },
+    "main": {
+        "width": 1400,
+        "crop": "limit",
+        "quality": "auto:best",
+        "fetch_format": "auto",
+        "dpr": "auto",
+    },
+    "zoom": {
+        "width": 2000,
+        "crop": "limit",
+        "quality": "auto:best",
+        "fetch_format": "auto",
+    },
+}
 
 # Do not create local upload folder for production storage
 # os.makedirs(BLOG_UPLOAD_FOLDER, exist_ok=True)
@@ -534,6 +560,52 @@ def upload_size(file):
         return int(getattr(file, "content_length", 0) or 0)
 
 
+def product_image_url(image, variant="main"):
+    if not image:
+        return DEFAULT_IMAGE_URL
+
+    public_id = getattr(image, "public_id", None)
+    fallback_url = getattr(image, "image_url", None) or DEFAULT_IMAGE_URL
+    transform = PRODUCT_IMAGE_TRANSFORMS.get(variant, PRODUCT_IMAGE_TRANSFORMS["main"])
+
+    if public_id:
+        try:
+            return CloudinaryImage(public_id).build_url(secure=True, transformation=[transform])
+        except Exception as exc:
+            app.logger.warning("Cloudinary product image URL build failed for %s: %s", public_id, exc)
+
+    return fallback_url
+
+
+def upload_product_image(file):
+    file_size = upload_size(file)
+    app.logger.info(
+        "Product image upload input: filename=%s bytes=%s content_type=%s",
+        file.filename,
+        file_size,
+        getattr(file, "content_type", None),
+    )
+
+    result = cloudinary.uploader.upload(
+        file,
+        folder="products/images",
+        resource_type="image"
+    )
+
+    app.logger.info(
+        "Product image Cloudinary result: public_id=%s width=%s height=%s bytes=%s secure_url=%s",
+        result.get("public_id"),
+        result.get("width"),
+        result.get("height"),
+        result.get("bytes"),
+        result.get("secure_url"),
+    )
+    return result
+
+
+app.jinja_env.globals["product_image_url"] = product_image_url
+
+
 def validate_product_media_uploads():
     images = product_media_uploads("image")
     videos = product_media_uploads("video")
@@ -547,7 +619,7 @@ def validate_product_media_uploads():
         if not allowed_file(image.filename, "image"):
             return "Only JPG, JPEG, PNG and WEBP image files are allowed."
         if upload_size(image) > MAX_PRODUCT_IMAGE_BYTES:
-            return "Each image must be 3MB or smaller."
+            return "Each image must be 8MB or smaller."
 
     for video in videos:
         if not allowed_file(video.filename, "video"):
@@ -1865,7 +1937,7 @@ def order_item_image_url(item):
         ).first()
     if not image:
         image = ProductImage.query.filter_by(product_id=item.product_id).first()
-    return image.image_url if image else DEFAULT_IMAGE_URL
+    return product_image_url(image, "thumb") if image else DEFAULT_IMAGE_URL
 
 
 app.jinja_env.globals["order_item_image_url"] = order_item_image_url
@@ -1888,7 +1960,7 @@ def product_variant_image_url(product_id, color_id=None):
             ProductImage.is_primary.desc(),
             ProductImage.id.asc()
         ).first()
-    return image.image_url if image else DEFAULT_IMAGE_URL
+    return product_image_url(image, "thumb") if image else DEFAULT_IMAGE_URL
 
 
 def send_paid_order_emails(order):
@@ -2903,17 +2975,15 @@ def add_product():
             for img in images:
                 if img and allowed_file(img.filename, "image"):
 
-                    result = cloudinary.uploader.upload(
-                        img,
-                        folder="products/images",
-                        resource_type="image"
-                    )
+                    result = upload_product_image(img)
                     image_url = result.get("secure_url")
+                    public_id = result.get("public_id")
                     print("Uploaded image URL:", image_url)
 
                     db.session.add(ProductImage(
                         product_id=product.id,
                         image_url=image_url,
+                        public_id=public_id,
                         color_id=int(color_id),
                         is_primary=not first_for_color   # ✅ per color primary
                     ))
@@ -2930,17 +3000,15 @@ def add_product():
         for img in default_images:
             if img and allowed_file(img.filename, "image"):
 
-                result = cloudinary.uploader.upload(
-                    img,
-                    folder="products/images",
-                    resource_type="image"
-                )
+                result = upload_product_image(img)
                 image_url = result.get("secure_url")
+                public_id = result.get("public_id")
                 print("Uploaded image URL:", image_url)
 
                 db.session.add(ProductImage(
                     product_id=product.id,
                     image_url=image_url,
+                    public_id=public_id,
                     color_id=None,
                     is_primary=not first_default
                 ))
@@ -3132,17 +3200,15 @@ def edit_product(id):
             for img in images:
                 if img and allowed_file(img.filename, "image"):
 
-                    result = cloudinary.uploader.upload(
-                        img,
-                        folder="products/images",
-                        resource_type="image"
-                    )
+                    result = upload_product_image(img)
                     image_url = result.get("secure_url")
+                    public_id = result.get("public_id")
                     print("Uploaded image URL:", image_url)
 
                     db.session.add(ProductImage(
                         product_id=id,
                         image_url=image_url,
+                        public_id=public_id,
                         color_id=int(color_id),
                         is_primary=False
                     ))
@@ -3155,17 +3221,15 @@ def edit_product(id):
         for img in default_images:
             if img and allowed_file(img.filename, "image"):
 
-                result = cloudinary.uploader.upload(
-                    img,
-                    folder="products/images",
-                    resource_type="image"
-                )
+                result = upload_product_image(img)
                 image_url = result.get("secure_url")
+                public_id = result.get("public_id")
                 print("Uploaded image URL:", image_url)
 
                 db.session.add(ProductImage(
                     product_id=id,
                     image_url=image_url,
+                    public_id=public_id,
                     color_id=None,
                     is_primary=False
                 ))
@@ -4825,10 +4889,10 @@ def products():
 
         for img in images:
             if img.color_id:
-                color_images[img.color_id].append(img.image_url)
+                color_images[img.color_id].append(product_image_url(img, "thumb"))
 
         # 🖼️ fallback images (no color)
-        fallback_images = [img.image_url for img in images if not img.color_id]
+        fallback_images = [product_image_url(img, "thumb") for img in images if not img.color_id]
 
         # ❌ SKIP if no images at all
         if not images:
@@ -4858,7 +4922,7 @@ def products():
                 "size_type": product_size_type(p),
                 "requires_size": requires_size,
 
-                "images": fallback_images if fallback_images else [images[0].image_url],
+                "images": fallback_images if fallback_images else [product_image_url(images[0], "thumb")],
 
                 "color_variant": None,
                 "colors": [],
@@ -4876,7 +4940,7 @@ def products():
 
             # 🧠 fallback logic
             if not imgs:
-                imgs = fallback_images if fallback_images else [images[0].image_url]
+                imgs = fallback_images if fallback_images else [product_image_url(images[0], "thumb")]
 
             # ❌ still empty → skip
             if not imgs:
@@ -4944,7 +5008,7 @@ def api_search():
             "id": p.id,
             "name": p.name,
             "price": p.price,
-            "image": image.image_url if image else "/static/images/default.png"
+            "image": product_image_url(image, "thumb") if image else "/static/images/default.png"
         })
 
     return jsonify(result)
@@ -5270,7 +5334,9 @@ def product_detail(id):
     images_data = [
       {
         "id": img.id,
-        "image_url": img.image_url,
+        "image_url": product_image_url(img, "main"),
+        "thumb_url": product_image_url(img, "thumb"),
+        "zoom_url": product_image_url(img, "zoom"),
         "color_id": img.color_id
       }
         for img in images

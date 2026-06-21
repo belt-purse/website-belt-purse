@@ -1400,6 +1400,11 @@ function renderProductsGrid(products) {
         const defaultImage = product.images?.[0] || "/static/images/default.png";
         let selectedColorId = colorId;
         const colorImages = getProductColorImages(product);
+        console.log("Product card image URL:", {
+            product_id: productId,
+            color_id: colorId,
+            url: defaultImage
+        });
 
         const colorsHTML = colorList.length
             ? `<div class="prd-color-row">
@@ -1470,6 +1475,11 @@ function renderProductsGrid(products) {
                 selectedColorId = cId;
                 if (img?.length) {
                     imgEl.src = img[0];
+                    console.log("Product card image URL:", {
+                        product_id: productId,
+                        color_id: cId,
+                        url: img[0]
+                    });
                 }
                 div.querySelectorAll(".color-dot").forEach(item => item.classList.remove("active"));
                 dot.classList.add("active");

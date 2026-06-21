@@ -6,7 +6,7 @@
 {% block og_title %}{{ product.name }} | Belt Purse Store{% endblock %}
 {% block og_description %}{{ (product.description or (product.name ~ ' from Belt Purse Store')) | striptags | truncate(155, True) }}{% endblock %}
 {% if images|length > 0 %}
-    {% set primary_product_image = images[0].image_url %}
+    {% set primary_product_image = product_image_url(images[0], 'main') %}
 {% else %}
     {% set primary_product_image = url_for('static', filename='images/default.png') %}
 {% endif %}
@@ -2703,6 +2703,16 @@ body .lightbox-overlay .product-lightbox-next:active {
 const ALL_IMAGES = JSON.parse(document.getElementById("images-data").textContent || "[]");
 const ALL_VIDEOS = JSON.parse(document.getElementById("videos-data").textContent || "[]");
 
+if (ALL_IMAGES.length) {
+    console.log("Product detail image URLs:", ALL_IMAGES.map(img => ({
+        id: img.id,
+        color_id: img.color_id,
+        detail_url: img.image_url,
+        thumb_url: img.thumb_url,
+        zoom_url: img.zoom_url
+    })));
+}
+
 let galleryItems = [];
 let currentGalleryIndex = 0;
 let lightboxTouchStartX = 0;
@@ -2947,6 +2957,7 @@ function setGalleryImage(src, isVideo) {
             </video>
         `;
     } else {
+        console.log("Product detail active image URL:", { url: src });
         main.innerHTML = `<img src="${src}" alt="{{ product.name }} product image" draggable="false">`;
     }
 }
@@ -2971,7 +2982,9 @@ function buildGalleryItems(colorId = null) {
     galleryItems = [
         ...filteredImages.map(img => ({
             type: "image",
-            src: img.image_url
+            src: img.image_url,
+            thumbSrc: img.thumb_url || img.image_url,
+            zoomSrc: img.zoom_url || img.image_url
         })),
         ...filteredVideos.map(video => ({
             type: "video",
@@ -3056,7 +3069,7 @@ function renderGalleryThumbs() {
         } else {
             thumbs.innerHTML += `
                 <button type="button" onclick="goToGallerySlide(${index})">
-                    <img src="${item.src}" alt="{{ product.name }} product thumbnail">
+                    <img src="${item.thumbSrc || item.src}" alt="{{ product.name }} product thumbnail">
                 </button>
             `;
         }
@@ -3173,7 +3186,8 @@ function renderLightboxMedia() {
             </video>
         `;
     } else {
-        lightboxMedia.innerHTML = `<img src="${item.src}" alt="{{ product.name }} product preview">`;
+        console.log("Product zoom image URL:", { url: item.zoomSrc || item.src });
+        lightboxMedia.innerHTML = `<img src="${item.zoomSrc || item.src}" alt="{{ product.name }} product preview">`;
     }
 }
 
@@ -3569,7 +3583,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <!-- 🔥 ONLY THIS WILL CHANGE -->
 <div id="detailMainMedia">
     {% if images|length > 0 %}
-        <img id="mainImage" src="{{ images[0].image_url }}" alt="{{ product.name }} - premium {{ product.product_type or 'accessory' }} from Belt Purse Store" draggable="false">
+        <img id="mainImage" src="{{ product_image_url(images[0], 'main') }}" alt="{{ product.name }} - premium {{ product.product_type or 'accessory' }} from Belt Purse Store" draggable="false">
     {% elif videos|length > 0 %}
         <video controls src="{{ videos[0].video_url }}" draggable="false"></video>
     {% endif %}
@@ -3581,7 +3595,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     {% for img in images %} 
         <button type="button" onclick="goToGallerySlide({{ loop.index0 }})">
-            <img src="{{ img.image_url }}" alt="{{ product.name }} thumbnail {{ loop.index }} - Belt Purse Store">
+            <img src="{{ product_image_url(img, 'thumb') }}" alt="{{ product.name }} thumbnail {{ loop.index }} - Belt Purse Store">
         </button>
     {% endfor %}
 
@@ -3949,7 +3963,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="related-grid">
             {% for p in related_products %}
           <a href="/product/{{ p.id }}" class="related-card">
-    <img src="{{ p.images[0].image_url if p.images and p.images[0] else '/static/images/default.png' }}" alt="{{ p.name }} - related product from Belt Purse Store">
+    <img src="{{ product_image_url(p.images[0], 'thumb') if p.images and p.images[0] else '/static/images/default.png' }}" alt="{{ p.name }} - related product from Belt Purse Store">
     <div class="related-card-body">
         <h4>{{ p.name }}</h4>
         {% if p.feature_line %}
