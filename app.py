@@ -619,7 +619,7 @@ def validate_product_media_uploads():
         if not allowed_file(image.filename, "image"):
             return "Only JPG, JPEG, PNG and WEBP image files are allowed."
         if upload_size(image) > MAX_PRODUCT_IMAGE_BYTES:
-            return "Each image must be 8MB or smaller."
+            return "Each image must be 40MB or smaller."
 
     for video in videos:
         if not allowed_file(video.filename, "video"):
