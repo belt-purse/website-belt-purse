@@ -3614,6 +3614,11 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="product-title-row">
                 <div>
                     <h1>{{ product.name }}</h1>
+                    
+                    {% if product.feature_line %}
+                    <div class="product-feature-line">{{ product.feature_line | e }}</div>
+                    {% endif %}
+                    
                     <div class="product-meta">
                         {% for tag in tags %}
                             <span class="tag-pill">{{ tag.tag }}</span>
