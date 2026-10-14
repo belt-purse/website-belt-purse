@@ -611,7 +611,7 @@ def validate_product_media_uploads():
     videos = product_media_uploads("video")
 
     if len(images) > MAX_PRODUCT_IMAGES_PER_UPLOAD:
-        return "You can upload maximum 5 images at a time."
+        return "You can upload maximum 15 images at a time."
     if len(videos) > MAX_PRODUCT_VIDEOS_PER_UPLOAD:
         return "You can upload maximum 2 videos at a time."
 
