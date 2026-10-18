@@ -839,8 +839,8 @@ def cart_line_total(user_id, product_id, color_id=None, size_id=None):
         FROM cart c
         JOIN products p ON p.id = c.product_id
         WHERE c.user_id=:uid AND c.product_id=:pid
-        AND ((c.color_id IS NULL AND :cid IS NULL) OR c.color_id=:cid)
-        AND ((c.size_id IS NULL AND :sid IS NULL) OR c.size_id=:sid)
+        AND ((c.color_id IS NULL AND CAST(:cid AS INTEGER) IS NULL) OR c.color_id=CAST(:cid AS INTEGER))
+        AND ((c.size_id IS NULL AND CAST(:sid AS INTEGER) IS NULL) OR c.size_id=CAST(:sid AS INTEGER))
         LIMIT 1
     """), {"uid": user_id, "pid": product_id, "cid": color_id, "sid": size_id}).scalar() or 0
 
@@ -5861,8 +5861,8 @@ def toggle_cart(product_id):
         SELECT 1 FROM cart 
         WHERE user_id=:uid 
         AND product_id=:pid 
-        AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-        AND ((color_id IS NULL AND :cid IS NULL) OR color_id = :cid)
+        AND ((size_id IS NULL AND CAST(:sid AS INTEGER) IS NULL) OR size_id=CAST(:sid AS INTEGER))
+        AND ((color_id IS NULL AND CAST(:cid AS INTEGER) IS NULL) OR color_id=CAST(:cid AS INTEGER))
     """), {
         "uid": user.id,
         "pid": product_id,
@@ -5875,8 +5875,8 @@ def toggle_cart(product_id):
             DELETE FROM cart 
             WHERE user_id=:uid 
             AND product_id=:pid 
-            AND ((size_id IS NULL AND :sid IS NULL) OR size_id=:sid)
-            AND ((color_id IS NULL AND :cid IS NULL) OR color_id = :cid)
+            AND ((size_id IS NULL AND CAST(:sid AS INTEGER) IS NULL) OR size_id=CAST(:sid AS INTEGER))
+            AND ((color_id IS NULL AND CAST(:cid AS INTEGER) IS NULL) OR color_id=CAST(:cid AS INTEGER))
         """), {
             "uid": user.id,
             "pid": product_id,
