@@ -158,6 +158,9 @@ class ProductColor(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
     color_id = db.Column(db.Integer, db.ForeignKey('colors.id'))
 
+    name = db.Column(db.String(200), nullable=True)
+    feature_line = db.Column(db.String(255), nullable=True)
+
     color = db.relationship('Color')
 
 
