@@ -173,6 +173,8 @@ def ensure_live_db_columns():
     added_homepage_mobile_show = ensure_column_exists("products", "show_on_homepage_mobile", "show_on_homepage_mobile BOOLEAN DEFAULT FALSE")
     added_homepage_mobile_position = ensure_column_exists("products", "homepage_mobile_position", "homepage_mobile_position INTEGER")
     ensure_column_exists("colors", "hex_code", "hex_code VARCHAR(20)")
+    ensure_column_exists("product_colors", "variant_name", "variant_name VARCHAR(255)")
+    ensure_column_exists("product_colors", "variant_feature_line", "variant_feature_line VARCHAR(100)")
     ensure_column_exists("blog", "blog_date", "blog_date DATE")
     ensure_column_exists("orders", "coupon_code", "coupon_code VARCHAR(50)")
     ensure_column_exists("orders", "applied_coupon_code", "applied_coupon_code VARCHAR(50)")
