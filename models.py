@@ -158,8 +158,10 @@ class ProductColor(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
     color_id = db.Column(db.Integer, db.ForeignKey('colors.id'))
 
-    color = db.relationship('Color')
+    variant_name = db.Column(db.String(255), nullable=True)
+    variant_feature_line = db.Column(db.String(100), nullable=True)
 
+    color = db.relationship('Color')
 
 class PaymentMethod(db.Model):
     __tablename__ = 'payment_methods'
