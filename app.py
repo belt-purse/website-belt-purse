@@ -3191,10 +3191,21 @@ def edit_product(id):
         # ADD COLORS + NEW IMAGES
         # =========================
         for color_id in selected_colors:
+            color_id_int = int(color_id)
+
+            variant_name = (
+                request.form.get(f"variant_name_{color_id}") or ""
+            ).strip()[:255] or None
+
+            variant_feature_line = (
+                request.form.get(f"variant_feature_line_{color_id}") or ""
+            ).strip()[:100] or None
 
             db.session.add(ProductColor(
                 product_id=id,
-                color_id=int(color_id)
+                color_id=color_id_int,
+                variant_name=variant_name,
+                variant_feature_line=variant_feature_line
             ))
 
             images = request.files.getlist(f"color_images_{color_id}")
