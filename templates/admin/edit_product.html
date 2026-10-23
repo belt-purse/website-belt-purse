@@ -359,6 +359,36 @@
         <strong class="color-name">{{ color.name }}</strong>
     </label>
 
+    <!-- COLOUR-SPECIFIC PRODUCT DETAILS -->
+    {% set pc = namespace(item=none) %}
+    {% for existing_pc in product.product_colors %}
+        {% if existing_pc.color_id == color.id %}
+            {% set pc.item = existing_pc %}
+        {% endif %}
+    {% endfor %}
+
+    <div class="form-group">
+        <label>Product Name for {{ color.name }}</label>
+        <input
+            type="text"
+            name="variant_name_{{ color.id }}"
+            value="{{ pc.item.variant_name if pc.item and pc.item.variant_name else '' }}"
+            placeholder="Enter name for {{ color.name }}"
+            maxlength="255"
+        >
+    </div>
+
+    <div class="form-group">
+        <label>Feature Line for {{ color.name }}</label>
+        <input
+            type="text"
+            name="variant_feature_line_{{ color.id }}"
+            value="{{ pc.item.variant_feature_line if pc.item and pc.item.variant_feature_line else '' }}"
+            placeholder="Enter feature for {{ color.name }}"
+            maxlength="100"
+        >
+    </div>
+
     <!-- IMAGE INPUT -->
     <div class="media-block">
         <p class="media-title">Images</p>

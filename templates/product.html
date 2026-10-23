@@ -3412,6 +3412,28 @@ function changeColor(colorId, el) {
         colorName.textContent = el.dataset.colorName || "";
     }
 
+    const productName = document.getElementById("productDisplayName");
+    const featureLine = document.getElementById("productDisplayFeatureLine");
+
+    if (productName && el) {
+        productName.textContent =
+            el.dataset.variantName ||
+            productName.dataset.defaultName ||
+            productName.textContent;
+    }
+
+    if (featureLine && el) {
+        const feature = el.dataset.variantFeatureLine || "";
+
+        if (feature) {
+            featureLine.textContent = feature;
+            featureLine.style.display = "";
+        } else {
+            featureLine.textContent = featureLine.dataset.defaultFeature || "";
+            featureLine.style.display = featureLine.textContent ? "" : "none";
+        }
+    }
+
     buildGalleryItems(colorId);
     refreshVariantButtons();
 }
@@ -3613,11 +3635,15 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="product-info-panel">
             <div class="product-title-row">
                 <div>
-                    <h1>{{ product.name }}</h1>
-                    
-                    {% if product.feature_line %}
-                    <div class="product-feature-line">{{ product.feature_line | e }}</div>
-                    {% endif %}
+                    <h1 id="productDisplayName"
+                        data-default-name="{{ product.name|e }}">{{ product.name }}</h1>
+
+                    <div
+                        id="productDisplayFeatureLine"
+                        class="product-feature-line"
+                        data-default-feature="{{ product.feature_line or '' }}"
+                        {% if not product.feature_line %}style="display:none"{% endif %}
+                    >{{ product.feature_line | e }}</div>
                     
                     <div class="product-meta">
                         {% for tag in tags %}
@@ -3725,6 +3751,8 @@ document.addEventListener("DOMContentLoaded", () => {
       style="background: {{ color.color.hex_code or color.color.code }}"
       data-color-id="{{ color.color.id }}"
       data-color-name="{{ color.color.name }}"
+      data-variant-name="{{ (color.variant_name or '')|e }}"
+      data-variant-feature-line="{{ (color.variant_feature_line or '')|e }}"
       title="{{ color.color.name }}">
 </span>
 {% endfor %}
