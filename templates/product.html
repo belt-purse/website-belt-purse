@@ -3613,11 +3613,13 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="product-info-panel">
             <div class="product-title-row">
                 <div>
-                    <h1 id="productDisplayName">{{ product.name }}</h1>
+                    <h1 id="productDisplayName"
+                        data-default-name="{{ product.name|e }}">{{ product.name }}</h1>
 
                     <div
                         id="productDisplayFeatureLine"
                         class="product-feature-line"
+                        data-default-feature="{{ product.feature_line or '' }}"
                         {% if not product.feature_line %}style="display:none"{% endif %}
                     >{{ product.feature_line | e }}</div>
                     
@@ -3727,6 +3729,8 @@ document.addEventListener("DOMContentLoaded", () => {
       style="background: {{ color.color.hex_code or color.color.code }}"
       data-color-id="{{ color.color.id }}"
       data-color-name="{{ color.color.name }}"
+      data-variant-name="{{ (color.variant_name or '')|e }}"
+      data-variant-feature-line="{{ (color.variant_feature_line or '')|e }}"
       title="{{ color.color.name }}">
 </span>
 {% endfor %}
