@@ -3412,6 +3412,28 @@ function changeColor(colorId, el) {
         colorName.textContent = el.dataset.colorName || "";
     }
 
+    const productName = document.getElementById("productDisplayName");
+    const featureLine = document.getElementById("productDisplayFeatureLine");
+
+    if (productName && el) {
+        productName.textContent =
+            el.dataset.variantName ||
+            productName.dataset.defaultName ||
+            productName.textContent;
+    }
+
+    if (featureLine && el) {
+        const feature = el.dataset.variantFeatureLine || "";
+
+        if (feature) {
+            featureLine.textContent = feature;
+            featureLine.style.display = "";
+        } else {
+            featureLine.textContent = featureLine.dataset.defaultFeature || "";
+            featureLine.style.display = featureLine.textContent ? "" : "none";
+        }
+    }
+
     buildGalleryItems(colorId);
     refreshVariantButtons();
 }
